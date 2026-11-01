@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+  }
+  
+  body {
+    background-color: #080d16;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    overflow-x: hidden;
+  }
+}
+
+/* Glassmorphism tactical card */
+.glass-card {
+  background: rgba(19, 27, 41, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass-card-interactive:hover {
+  border-color: rgba(18, 214, 199, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px -5px rgba(0, 0, 0, 0.65), 0 0 18px rgba(18, 214, 199, 0.1);
+}
+
+/* Tactile Rotary Knob */
+.dial-knob {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #2a3449, #131a26);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 
+    0 6px 14px rgba(0, 0, 0, 0.6),
+    inset 0 2px 4px rgba(255, 255, 255, 0.15);
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dial-knob::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3.5px;
+  height: 10px;
+  background: #12d6c7;
+  border-radius: 2px;
+  box-shadow: 0 0 8px #12d6c7;
+}
+
+/* Moon Orbit Keyframes */
+@keyframes satPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.35); opacity: 1; filter: drop-shadow(0 0 8px #fca311); }
+}
+
+.orbit-pulse {
+  animation: satPulse 3s infinite cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080d16;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}

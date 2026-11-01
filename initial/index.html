@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b111e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>AstroPro — Photography Field Suite</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              cyan: '#12d6c7',
+              cyanHover: '#0ebcaf',
+              amber: '#fca311',
+              amberHover: '#e5920b',
+              navy: '#0b111e',
+              surface: '#111827',
+              card: '#131b29',
+              border: 'rgba(255, 255, 255, 0.08)'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background-color: #080d16;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(18, 214, 199, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 85% 30%, rgba(252, 163, 17, 0.05) 0%, transparent 45%),
+        linear-gradient(180deg, #0e1524 0%, #080c15 100%);
+      background-attachment: fixed;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Subtle Glassmorphism Card Style */
+    .glass-card {
+      background: rgba(19, 27, 41, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+      transform: translateY(-1px);
+    }
+
+    /* Moon Orbital Simulation */
+    .orbit-ellipse {
+      position: absolute;
+      width: 190px;
+      height: 105px;
+      border: 1.5px solid rgba(252, 163, 17, 0.55);
+      border-radius: 50%;
+      transform: rotate(-22deg) translate(-50%, -50%);
+      top: 50%;
+      left: 50%;
+      pointer-events: none;
+    }
+    .orbit-sat {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #fca311;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #fca311, 0 0 16px rgba(252, 163, 17, 0.9);
+      top: 15px;
+      right: 20px;
+      animation: satPulse 3s infinite ease-in-out;
+    }
+    @keyframes satPulse {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.3); opacity: 1; }
+    }
+
+    /* Rotary Dial Knob Graphic */
+    .dial-knob {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #2a3449, #131a26);
+      border: 1.5px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 
+        0 6px 14px rgba(0, 0, 0, 0.6),
+        inset 0 2px 4px rgba(255, 255, 255, 0.15);
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    .dial-knob::after {
+      content: '';
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3.5px;
+      height: 9px;
+      background: #12d6c7;
+      border-radius: 2px;
+      box-shadow: 0 0 8px #12d6c7;
+    }
+
+    /* Circular SVG Timer */
+    .timer-ring {
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+    .timer-ring-circle {
+      stroke-dasharray: 283;
+      stroke-dashoffset: 70;
+      transition: stroke-dashoffset 0.3s ease;
+    }
+
+    /* Custom range input styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: #1e293b;
+      border-radius: 6px;
+      height: 6px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #12d6c7;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(18, 214, 199, 0.7);
+    }
+
+    /* Hide scrollbar for tabs */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .tab-active {
+      color: #12d6c7;
+      border-bottom: 2px solid #12d6c7;
+      text-shadow: 0 0 10px rgba(18, 214, 199, 0.4);
+    }
+  </style>
+</head>
+
+<body class="flex flex-col min-h-screen text-slate-100 antialiased">
+
+  <!-- ================= TOP STICKY NAVIGATION BAR ================= -->
+  <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-6 py-3">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-2 cursor-pointer" onclick="showView('dashboard')">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-teal-300 p-0.5 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <svg class="w-5 h-5 text-slate-950 fill-current" viewBox="0 0 24 24">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V17a1 1 0 0 0-2 0v2.93A8 8 0 0 1 4.07 13H7a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V7a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H17a1 1 0 0 0 0 2h2.93A8 8 0 0 1 13 19.93z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="text-lg font-extrabold tracking-tight text-white block leading-none">AstroPro</span>
+          <span class="text-[10px] text-cyan-400 font-medium tracking-wide">PHOTOGRAPHY FIELD SUITE</span>
+        </div>
+      </div>
+
+      <!-- Current Location GPS Pill -->
+      <button onclick="detectLocation()" class="hidden xs:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400/60 transition-all text-xs font-mono text-cyan-300 shadow-sm" title="Click to use live GPS">
+        <svg class="w-3 h-3 fill-current text-cyan-400 transform -rotate-45" viewBox="0 0 24 24">
+          <path d="M2 12l20-9-9 20-2-8-9-3z"/>
+        </svg>
+        <span id="headerCoords">33.77° N, 84.40° W</span>
+        <span class="text-slate-400 font-sans font-normal ml-1">· Atlanta, GA</span>
+      </button>
+
+      <!-- Quick Actions / Menu button -->
+      <div class="flex items-center gap-2">
+        <button onclick="toggleARModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all">
+          <svg class="w-3.5 h-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span class="hidden sm:inline">Live</span> AR
+        </button>
+
+        <button onclick="showView('settings')" class="w-8 h-8 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white transition-colors">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Category / Tool Tabs -->
+    <div class="max-w-4xl mx-auto mt-2.5 flex items-center justify-between border-t border-slate-800/60 pt-1 overflow-x-auto no-scrollbar gap-2 text-xs font-semibold text-slate-400">
+      <button onclick="showView('dashboard')" id="tab-dashboard" class="tab-btn tab-active py-2 px-3 whitespace-nowrap transition-all">
+        Dashboard
+      </button>
+      <button onclick="showView('dof')" id="tab-dof" class="tab-btn py-2 px-3 whitespace-nowrap hover:text-slate-200 transition-all">
+        DoF & Hyperfocal
+      </button>
+      <button onclick="showView('nd')" id="tab-nd" class="tab-btn py-2 px-3 whitespace-nowrap hover:text-slate-200 transition-all">
+        ND Exposure Timer
+      </button>
+      <button onclick="showView('astro')" id="tab-astro" class="tab-btn py-2 px-3 whitespace-nowrap hover:text-slate-200 transition-all">
+        Astro (500/NPF)
+      </button>
+      <button onclick="showView('moon')" id="tab-moon" class="tab-btn py-2 px-3 whitespace-nowrap hover:text-slate-200 transition-all">
+        Moon & Transits
+      </button>
+      <button onclick="showView('fov')" id="tab-fov" class="tab-btn py-2 px-3 whitespace-nowrap hover:text-slate-200 transition-all">
+        FoV & Sensors
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT CONTAINER ================= -->
+  <main class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 pb-24">
+
+    <!-- ================= VIEW 1: MAIN DASHBOARD HUB ================= -->
+    <div id="view-dashboard" class="space-y-4">
+
+      <!-- HERO ROW: 3D Moon Orbit + ISS Transit + AR Button -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+        
+        <!-- Left: Moon Status Card (7 Cols) -->
+        <div onclick="showView('moon')" class="md:col-span-7 glass-card rounded-2xl p-4 relative overflow-hidden cursor-pointer group">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              Lunar Tracker
+            </span>
+            <span class="text-[11px] text-cyan-400 font-mono font-medium flex items-center gap-1">
+              Live Ephemeris &rarr;
+            </span>
+          </div>
+
+          <!-- Moon Graphic with Orbit Ring -->
+          <div class="relative w-full h-36 flex items-center justify-center my-1">
+            <div class="orbit-ellipse">
+              <div class="orbit-sat"></div>
+            </div>
+            
+            <!-- Photorealistic Styled 3D Moon Surface -->
+            <div class="w-24 h-24 rounded-full relative overflow-hidden shadow-2xl shadow-cyan-950/60" style="background: radial-gradient(circle at 35% 35%, #f1f5f9 0%, #cbd5e1 35%, #475569 70%, #0f172a 100%);">
+              <!-- Lunar Mare & Crater Texture -->
+              <div class="absolute inset-0 opacity-45 mix-blend-multiply" style="background-image: 
+                radial-gradient(circle at 45% 65%, #1e293b 10px, transparent 11px),
+                radial-gradient(circle at 70% 30%, #1e293b 14px, transparent 15px),
+                radial-gradient(circle at 25% 35%, #334155 7px, transparent 8px),
+                radial-gradient(circle at 80% 75%, #1e293b 12px, transparent 13px),
+                radial-gradient(circle at 55% 45%, #0f172a 18px, transparent 19px);">
+              </div>
+              <!-- Terminator Shadow for Waning Gibbous ~93% -->
+              <div class="absolute inset-0" style="background: linear-gradient(90deg, transparent 0%, transparent 88%, rgba(8, 12, 22, 0.94) 100%);"></div>
+            </div>
+          </div>
+
+          <!-- Moon Phase Details Footer -->
+          <div class="pt-3 border-t border-slate-800/80 grid grid-cols-2 text-xs">
+            <div>
+              <span class="text-slate-400 block text-[11px]">Lunar Phase:</span>
+              <span class="font-bold text-white">Waning Gibbous <span class="text-cyan-400 font-mono">(93%)</span></span>
+            </div>
+            <div class="text-right">
+              <span class="text-slate-400 block text-[11px]">Altitude:</span>
+              <span class="font-bold text-amber-400 font-mono text-sm">58.3°</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Stack: ISS Transit & AR Viewfinder (5 Cols) -->
+        <div class="md:col-span-5 flex flex-col justify-between gap-3.5">
+          
+          <!-- ISS / Satellite Transit Chaser Card -->
+          <div onclick="showView('moon')" class="glass-card rounded-2xl p-4 bg-gradient-to-br from-amber-950/30 via-slate-900/60 to-slate-900 border-amber-500/25 cursor-pointer hover:border-amber-400/50 flex-1 flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                <span class="text-xs font-bold text-amber-400 uppercase tracking-wide">ISS Transit Chaser</span>
+              </div>
+              <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-mono font-semibold">Center-disk</span>
+            </div>
+            
+            <div class="my-2">
+              <div class="text-2xl font-black text-amber-300 font-mono tracking-tight">
+                04h 18m
+              </div>
+              <p class="text-xs text-slate-300 mt-1">Predicted pass over Moon center from your location</p>
+            </div>
+
+            <div class="pt-2 border-t border-amber-500/15 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+              <span>Azimuth: 142° SE</span>
+              <span class="text-amber-400">Duration: 0.82s</span>
+            </div>
+          </div>
+
+          <!-- AR Viewfinder Action Card -->
+          <button onclick="toggleARModal()" class="rounded-2xl p-4 bg-gradient-to-r from-cyan-400 via-teal-400 to-cyan-300 text-slate-950 font-black shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-between">
+            <div class="text-left">
+              <div class="text-xl leading-none tracking-tight font-black">AR VIEWFINDER</div>
+              <div class="text-xs font-semibold text-slate-900/80 mt-1">Overlay Moon & Flight Paths</div>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-slate-950/15 flex items-center justify-center">
+              <svg class="w-6 h-6 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+              </svg>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- BOTTOM SECTION: 3 PRIMARY CALCULATOR CARDS -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+
+        <!-- CARD 1: Depth of Field (DoF) -->
+        <div onclick="showView('dof')" class="glass-card rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-cyan-500/40">
+          <div>
+            <div class="flex items-center justify-between text-slate-500 font-mono text-xs">
+              <span>01</span>
+              <span class="text-cyan-400">&nearr;</span>
+            </div>
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mt-1">Depth of Field</h3>
+            
+            <div class="mt-3">
+              <span class="text-[11px] text-slate-400 block">Aperture</span>
+              <span id="dashAperture" class="text-lg font-bold text-white font-mono">f/2.8</span>
+              <span class="text-xs text-slate-400 block font-mono">35mm Lens · Full Frame</span>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+            <div>
+              <span class="text-[11px] text-slate-400 block">Hyperfocal:</span>
+              <span id="dashHyperfocal" class="text-sm font-bold text-cyan-400 font-mono">14.6m</span>
+            </div>
+            <!-- Aperture Rotary Dial Graphic -->
+            <div class="dial-knob" title="Click to adjust DoF"></div>
+          </div>
+        </div>
+
+        <!-- CARD 2: ND Exposure Timer -->
+        <div class="glass-card rounded-2xl p-4 flex flex-col justify-between border-amber-500/25 relative">
+          <div>
+            <div class="flex items-center justify-between text-slate-500 font-mono text-xs">
+              <span>02</span>
+              <span class="text-amber-400">Bulb</span>
+            </div>
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mt-1">ND Exposure</h3>
+            
+            <div class="mt-1">
+              <span class="text-xs font-bold text-amber-400">10-Stop ND Filter</span>
+              <span class="text-[11px] text-slate-400 block font-mono">(ND1000 / 1000x)</span>
+            </div>
+          </div>
+
+          <!-- Circular Glowing SVG Timer -->
+          <div class="relative w-20 h-20 mx-auto my-2 flex items-center justify-center">
+            <svg class="w-full h-full timer-ring" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="#1f293d" stroke-width="6"/>
+              <circle id="dashTimerCircle" class="timer-ring-circle" cx="50" cy="50" r="42" fill="none" stroke="#fca311" stroke-width="6" stroke-linecap="round"/>
+            </svg>
+            <span id="dashTimerDisplay" class="absolute font-mono text-sm font-bold text-amber-300 tracking-tight">02:08</span>
+          </div>
+
+          <!-- Action Button -->
+          <button id="dashTimerBtn" onclick="toggleTimer()" class="w-full py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/30 transition-all text-center">
+            Stop / Edit
+          </button>
+        </div>
+
+        <!-- CARD 3: Astrophotography (NPF Rule) -->
+        <div onclick="showView('astro')" class="glass-card rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-cyan-500/40">
+          <div>
+            <div class="flex items-center justify-between text-slate-500 font-mono text-xs">
+              <span>03</span>
+              <span class="text-cyan-400">&nearr;</span>
+            </div>
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mt-1">Astrophotography</h3>
+            
+            <div class="mt-2">
+              <span class="text-xs font-bold text-cyan-300 block">NPF Rule</span>
+              <span class="text-[11px] text-slate-400 block">(Sharp Point Stars)</span>
+            </div>
+          </div>
+
+          <div class="my-3">
+            <span id="dashAstroShutter" class="text-2xl font-black text-amber-400 font-mono tracking-tight block">14.2s</span>
+            <span class="text-[11px] text-slate-400 block font-medium">Max Shutter Speed</span>
+          </div>
+
+          <div class="pt-2 border-t border-slate-800/80 text-xs text-slate-400 font-mono flex items-center justify-between">
+            <span>50mm f/4.0</span>
+            <span class="text-cyan-400 font-semibold">ISO 3200</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Extra Quick Access Banner: FoV & Sensor Comparison -->
+      <div onclick="showView('fov')" class="glass-card rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:border-slate-600 transition-all">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-center text-cyan-400">
+            <svg class="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <rect x="7" y="7" width="10" height="10" rx="1" stroke-dasharray="2 2"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-slate-100">Field of View (FoV) & Crop Factor Converter</h4>
+            <p class="text-xs text-slate-400">Compare focal length framing across Full Frame, APS-C, MFT & Medium Format</p>
+          </div>
+        </div>
+        <span class="text-sm text-cyan-400 font-bold hidden sm:inline">Launch Tool &rarr;</span>
+      </div>
+
+    </div>
+
+    <!-- ================= VIEW 2: DEPTH OF FIELD & HYPERFOCAL ================= -->
+    <div id="view-dof" class="hidden space-y-4">
+      <div class="glass-card rounded-2xl p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+              Depth of Field & Hyperfocal Distance
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Visualize near/far sharpness bounds and optical hyperfocal point</p>
+          </div>
+          <button onclick="showView('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800/80">
+            &larr; Back
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+          <!-- Controls Column -->
+          <div class="space-y-4 text-xs">
+            <div>
+              <label class="text-slate-300 font-semibold block mb-1">Camera Sensor Size</label>
+              <select id="calcSensor" onchange="runDoFCalc()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-medium">
+                <option value="1.0">Full Frame 35mm (1.0x)</option>
+                <option value="1.5">APS-C Sony / Nikon / Fuji (1.5x)</option>
+                <option value="1.6">APS-C Canon (1.6x)</option>
+                <option value="2.0">Micro Four Thirds (2.0x)</option>
+                <option value="0.79">Medium Format 44x33 (0.79x)</option>
+              </select>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-slate-300 font-semibold">
+                <span>Focal Length</span>
+                <span id="valFocal" class="font-mono text-cyan-400 font-bold">35 mm</span>
+              </div>
+              <input type="range" id="inputFocal" min="14" max="200" value="35" oninput="runDoFCalc()" class="w-full mt-1">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-slate-300 font-semibold">
+                <span>Aperture</span>
+                <span id="valAperture" class="font-mono text-amber-400 font-bold">f/2.8</span>
+              </div>
+              <input type="range" id="inputApertureIdx" min="0" max="8" value="2" oninput="runDoFCalc()" class="w-full mt-1">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-slate-300 font-semibold">
+                <span>Subject Distance</span>
+                <span id="valDist" class="font-mono text-white font-bold">3.0 m</span>
+              </div>
+              <input type="range" id="inputDist" min="0.5" max="30" step="0.5" value="3.0" oninput="runDoFCalc()" class="w-full mt-1">
+            </div>
+          </div>
+
+          <!-- Results & Diagram Column -->
+          <div class="flex flex-col justify-between space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                <span class="text-[11px] text-slate-400 block font-medium">Hyperfocal Distance</span>
+                <span id="outHyperfocalMain" class="text-xl font-bold text-cyan-300 font-mono">14.6 m</span>
+                <p class="text-[10px] text-slate-500 mt-1">Sharp from 7.3m to infinity</p>
+              </div>
+
+              <div class="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800">
+                <span class="text-[11px] text-slate-400 block font-medium">Total Depth of Field</span>
+                <span id="outTotalDofMain" class="text-xl font-bold text-amber-300 font-mono">1.78 m</span>
+                <p class="text-[10px] text-slate-500 mt-1">In acceptable focus</p>
+              </div>
+
+              <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-400 block">Near Focus Limit</span>
+                <span id="outNearLimitMain" class="text-base font-bold text-slate-200 font-mono">2.34 m</span>
+              </div>
+
+              <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-400 block">Far Focus Limit</span>
+                <span id="outFarLimitMain" class="text-base font-bold text-slate-200 font-mono">4.12 m</span>
+              </div>
+            </div>
+
+            <!-- Optical Sharpness Diagram Visualization -->
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2">
+              <span class="text-[11px] text-slate-400 block font-mono">Focus Depth Spectrum</span>
+              <div class="relative w-full h-7 bg-slate-900 rounded-lg overflow-hidden flex items-center px-2">
+                <div class="w-1.5 h-full bg-cyan-400 absolute left-[30%]" title="Subject Position"></div>
+                <div class="h-3 bg-gradient-to-r from-cyan-500/40 via-cyan-400/80 to-cyan-500/40 rounded absolute left-[22%] w-[25%]" title="Sharp Zone"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>0m (Camera)</span>
+                <span class="text-cyan-400 font-bold">Subject (3.0m)</span>
+                <span>Infinity (&infin;)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 3: ND EXPOSURE TIMER ================= -->
+    <div id="view-nd" class="hidden space-y-4">
+      <div class="glass-card rounded-2xl p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              Exposure & ND Filter Timer
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Reciprocity law calculator with long-exposure countdown</p>
+          </div>
+          <button onclick="showView('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800/80">
+            &larr; Back
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-5 items-center">
+          <!-- Filter Selection -->
+          <div class="space-y-4 text-xs">
+            <div>
+              <label class="text-slate-300 font-semibold block mb-1">Base Shutter Speed (No Filter)</label>
+              <select id="baseShutterSelect" onchange="calcNDExposure()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono">
+                <option value="0.004">1/250 s</option>
+                <option value="0.008">1/125 s (Standard Daylight)</option>
+                <option value="0.016">1/60 s</option>
+                <option value="0.033">1/30 s</option>
+                <option value="0.067">1/15 s</option>
+                <option value="0.125">1/8 s</option>
+                <option value="0.25">1/4 s</option>
+                <option value="0.5">1/2 s</option>
+                <option value="1">1.0 s</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-slate-300 font-semibold block mb-1">Neutral Density (ND) Filter Stack</label>
+              <div class="grid grid-cols-4 gap-2">
+                <button type="button" onclick="selectND(3)" class="nd-btn py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-mono font-bold hover:border-amber-400">3-Stop</button>
+                <button type="button" onclick="selectND(6)" class="nd-btn py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-mono font-bold hover:border-amber-400">6-Stop</button>
+                <button type="button" onclick="selectND(10)" class="nd-btn py-2 rounded-xl bg-amber-500/20 border border-amber-400 text-amber-300 font-mono font-bold">10-Stop</button>
+                <button type="button" onclick="selectND(15)" class="nd-btn py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 font-mono font-bold hover:border-amber-400">15-Stop</button>
+              </div>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+              <span class="text-[11px] text-slate-400">Calculated Equivalent Bulb Exposure:</span>
+              <div id="ndResultTime" class="text-2xl font-black text-amber-400 font-mono">02m 08s</div>
+              <span class="text-[10px] text-slate-500 block">Reciprocity compensation: 1024x light reduction</span>
+            </div>
+          </div>
+
+          <!-- Big Live Countdown Timer Dial -->
+          <div class="flex flex-col items-center justify-center p-4">
+            <div class="relative w-44 h-44 flex items-center justify-center">
+              <svg class="w-full h-full timer-ring" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#1e293b" stroke-width="5"/>
+                <circle id="bigTimerCircle" class="timer-ring-circle" cx="50" cy="50" r="42" fill="none" stroke="#fca311" stroke-width="5" stroke-linecap="round"/>
+              </svg>
+              <div class="absolute text-center">
+                <span id="bigTimerDisplay" class="font-mono text-3xl font-black text-amber-300 tracking-tight block">02:08</span>
+                <span class="text-[10px] text-slate-400 font-mono uppercase tracking-widest">Countdown</span>
+              </div>
+            </div>
+
+            <div class="flex gap-3 mt-4 w-full max-w-xs">
+              <button id="btnMainTimer" onclick="toggleTimer()" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition-all">
+                Start Timer
+              </button>
+              <button onclick="resetTimer()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all">
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 4: ASTROPHOTOGRAPHY & HYPERLAPSE ================= -->
+    <div id="view-astro" class="hidden space-y-4">
+      <div class="glass-card rounded-2xl p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+              Astrophotography (500 / NPF) & Hyperlapse
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Maximum pin-point star shutter times & intervals</p>
+          </div>
+          <button onclick="showView('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800/80">
+            &larr; Back
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+          <!-- 500 vs NPF Rule -->
+          <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-4">
+            <h3 class="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
+              <span>Star Trailing Limits</span>
+            </h3>
+            
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="text-slate-400 block mb-1">Sensor Pixel Pitch (&mu;m)</label>
+                <input type="number" id="astroPitch" step="0.1" value="4.2" oninput="calcAstroRules()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono">
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">Focal Length (mm)</label>
+                <input type="number" id="astroFocal" value="35" oninput="calcAstroRules()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono">
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">Aperture (f-stop)</label>
+                <input type="number" id="astroAp" step="0.1" value="2.8" oninput="calcAstroRules()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800">
+              <div class="p-3 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-[10px] text-slate-400 block">Classic 500 Rule:</span>
+                <span id="out500Rule" class="text-xl font-bold text-white font-mono">14.3s</span>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-950 border border-cyan-500/30">
+                <span class="text-[10px] text-cyan-400 block font-semibold">NPF Precision Rule:</span>
+                <span id="outNpfRule" class="text-xl font-bold text-cyan-300 font-mono">11.8s</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hyperlapse Photo Shoot Calculator -->
+          <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-4">
+            <h3 class="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+              <span>Hyperlapse Photo Shoot Calculator</span>
+            </h3>
+
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="text-slate-400 block mb-1">Final Video (sec)</label>
+                <input type="number" id="hlClip" value="10" oninput="calcHyperlapseSuite()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono">
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">Target FPS</label>
+                <input type="number" id="hlFpsVal" value="24" oninput="calcHyperlapseSuite()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono">
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">Interval (seconds)</label>
+                <input type="number" id="hlIntVal" value="5" oninput="calcHyperlapseSuite()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono">
+              </div>
+              <div>
+                <label class="text-slate-400 block mb-1">Sky Rotation (&deg;)</label>
+                <input type="number" id="hlRotVal" value="45" oninput="calcHyperlapseSuite()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono">
+              </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-950 border border-amber-500/30 grid grid-cols-2 gap-3">
+              <div>
+                <span class="text-[11px] text-slate-400 block">Total Photos Needed:</span>
+                <span id="outHlPhotos" class="text-xl font-bold text-amber-300 font-mono">240 shots</span>
+              </div>
+              <div>
+                <span class="text-[11px] text-slate-400 block">Total Shooting Time:</span>
+                <span id="outHlTime" class="text-xl font-bold text-white font-mono">20m 00s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 5: MOON & TRANSITCHASER ================= -->
+    <div id="view-moon" class="hidden space-y-4">
+      <div class="glass-card rounded-2xl p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              Moon Alignment & TransitChaser
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Calculate moon position & predict plane, rocket, and satellite passes</p>
+          </div>
+          <button onclick="showView('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800/80">
+            &larr; Back
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+          <!-- Moon Ephemeris Details -->
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
+            <h3 class="font-bold text-white flex items-center justify-between">
+              <span>Real-Time Lunar Ephemeris</span>
+              <span class="text-cyan-400 font-mono">93% Waning Gibbous</span>
+            </h3>
+
+            <div class="grid grid-cols-2 gap-2 text-slate-300 font-mono">
+              <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-[10px] text-slate-400 block font-sans">Altitude:</span>
+                <span class="text-base font-bold text-amber-400">58.3°</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-[10px] text-slate-400 block font-sans">Azimuth:</span>
+                <span class="text-base font-bold text-cyan-400">142° SE</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-[10px] text-slate-400 block font-sans">Moonrise:</span>
+                <span class="text-sm font-bold text-white">08:14 PM</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-[10px] text-slate-400 block font-sans">Moonset:</span>
+                <span class="text-sm font-bold text-white">09:42 AM</span>
+              </div>
+            </div>
+
+            <button onclick="toggleARModal()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 mt-2">
+              <svg class="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Launch Live AR Alignment Camera
+            </button>
+          </div>
+
+          <!-- Transit Predictions (TransitChaser Features) -->
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+            <h3 class="text-sm font-bold text-amber-400">Transit Opportunities (Lunar Disk Passes)</h3>
+
+            <!-- Item 1: ISS -->
+            <div class="p-3 rounded-lg bg-slate-950 border border-amber-500/30 flex items-center justify-between text-xs">
+              <div>
+                <span class="text-white font-bold block">International Space Station (ISS)</span>
+                <span class="text-[11px] text-slate-400">Direct centerline transit · Alt 58°</span>
+              </div>
+              <div class="text-right">
+                <span class="text-amber-300 font-mono font-bold block">T-04h 18m</span>
+                <span class="text-[10px] text-cyan-400">High Confidence</span>
+              </div>
+            </div>
+
+            <!-- Item 2: Rocket -->
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+              <div>
+                <span class="text-white font-bold block">Falcon 9 Launch Trajectory</span>
+                <span class="text-[11px] text-slate-400">Cape Canaveral ascent passes ~1.2° Moon rim</span>
+              </div>
+              <div class="text-right">
+                <span class="text-slate-300 font-mono font-bold block">In 18h 40m</span>
+                <span class="text-[10px] text-amber-400">Night Launch</span>
+              </div>
+            </div>
+
+            <!-- Item 3: Aircraft -->
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+              <div>
+                <span class="text-white font-bold block">Commercial Jet (Flight DL1402)</span>
+                <span class="text-[11px] text-slate-400">Boeing 737 at 34,000ft heading East</span>
+              </div>
+              <div class="text-right">
+                <span class="text-cyan-300 font-mono font-bold block">In 12m 10s</span>
+                <span class="text-[10px] text-slate-400">Contrail Match</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= VIEW 6: FOV & SENSOR CONVERTER ================= -->
+    <div id="view-fov" class="hidden space-y-4">
+      <div class="glass-card rounded-2xl p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+              Field of View (FoV) & Crop Factor Converter
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Compare how a focal length behaves across multiple camera sensors</p>
+          </div>
+          <button onclick="showView('dashboard')" class="text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800/80">
+            &larr; Back
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+          <div class="space-y-4 text-xs">
+            <div>
+              <div class="flex justify-between text-slate-300 font-semibold mb-1">
+                <span>Lens Focal Length</span>
+                <span id="fovFocalVal" class="font-mono text-cyan-400 font-bold">50 mm</span>
+              </div>
+              <input type="range" id="fovFocalInput" min="14" max="300" value="50" oninput="calcFoV()" class="w-full">
+            </div>
+
+            <div class="space-y-2 pt-2">
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex justify-between items-center">
+                <div>
+                  <span class="font-bold text-white block">Medium Format (0.79x)</span>
+                  <span class="text-[10px] text-slate-400">Equivalent to:</span>
+                </div>
+                <span id="fovMfEq" class="font-mono text-base font-bold text-slate-200">39.5 mm</span>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-900 border border-cyan-500/40 flex justify-between items-center">
+                <div>
+                  <span class="font-bold text-cyan-300 block">Full Frame (1.0x Reference)</span>
+                  <span class="text-[10px] text-slate-400">Native field of view:</span>
+                </div>
+                <span id="fovFfEq" class="font-mono text-base font-bold text-cyan-400">50.0 mm</span>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex justify-between items-center">
+                <div>
+                  <span class="font-bold text-white block">APS-C (1.5x)</span>
+                  <span class="text-[10px] text-slate-400">Equivalent to:</span>
+                </div>
+                <span id="fovApscEq" class="font-mono text-base font-bold text-amber-300">75.0 mm</span>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex justify-between items-center">
+                <div>
+                  <span class="font-bold text-white block">Micro Four Thirds (2.0x)</span>
+                  <span class="text-[10px] text-slate-400">Equivalent to:</span>
+                </div>
+                <span id="fovMftEq" class="font-mono text-base font-bold text-slate-200">100.0 mm</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multi-Sensor Framing Preview Box -->
+          <div class="flex flex-col items-center justify-center p-4 bg-slate-950 rounded-2xl border border-slate-800">
+            <span class="text-xs font-mono text-slate-400 mb-3">Simulated Sensor Crop Overlays</span>
+            <div class="relative w-64 h-44 bg-slate-900 border-2 border-slate-500 rounded-lg flex items-center justify-center">
+              <span class="absolute top-1 left-2 text-[9px] text-slate-400 font-mono">Medium Format</span>
+              
+              <!-- Full Frame Box -->
+              <div class="w-52 h-36 border border-cyan-400 rounded flex items-center justify-center relative">
+                <span class="absolute top-1 left-1 text-[9px] text-cyan-400 font-mono">Full Frame (1.0x)</span>
+                
+                <!-- APS-C Box -->
+                <div class="w-36 h-24 border border-amber-400 rounded flex items-center justify-center relative">
+                  <span class="absolute top-1 left-1 text-[8px] text-amber-400 font-mono">APS-C (1.5x)</span>
+
+                  <!-- MFT Box -->
+                  <div class="w-24 h-16 border border-red-400 rounded flex items-center justify-center">
+                    <span class="text-[8px] text-red-400 font-mono">MFT (2.0x)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ================= FLOATING BOTTOM NAVIGATION BAR ================= -->
+  <nav class="fixed bottom-0 inset-x-0 bg-slate-950/85 backdrop-blur-2xl border-t border-slate-800/80 px-6 py-2.5 z-40">
+    <div class="max-w-md mx-auto flex items-center justify-between text-slate-400 text-xs font-semibold">
+      
+      <!-- Dashboard -->
+      <button onclick="showView('dashboard')" id="bnav-dashboard" class="flex flex-col items-center gap-1 text-cyan-400 transition-colors">
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+          <path d="M12 3a9 9 0 0 0-9 9c0 2.12.74 4.07 1.97 5.61L4.35 19H19.65l-.62-1.39A8.96 8.96 0 0 0 21 12a9 9 0 0 0-9-9zm0 5a1 1 0 0 1 1 1v2.2a2 2 0 1 1-2 0V9a1 1 0 0 1 1-1z"/>
+        </svg>
+        <span>Dashboard</span>
+      </button>
+
+      <!-- Calculators -->
+      <button onclick="showView('dof')" id="bnav-dof" class="flex flex-col items-center gap-1 hover:text-slate-200 transition-colors">
+        <svg class="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>Calculators</span>
+      </button>
+
+      <!-- Moon Tracker -->
+      <button onclick="showView('moon')" id="bnav-moon" class="flex flex-col items-center gap-1 hover:text-slate-200 transition-colors">
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+          <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V17a1 1 0 0 0-2 0v2.93A8 8 0 0 1 4.07 13H7a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V7a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H17a1 1 0 0 0 0 2h2.93A8 8 0 0 1 13 19.93z"/>
+        </svg>
+        <span>Moon & ISS</span>
+      </button>
+
+      <!-- Live AR -->
+      <button onclick="toggleARModal()" class="flex flex-col items-center gap-1 hover:text-slate-200 transition-colors">
+        <svg class="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <span>AR Cam</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ================= AR CAMERA SIMULATOR OVERLAY ================= -->
+  <div id="arOverlay" class="fixed inset-0 bg-black/95 z-50 p-4 hidden flex-col justify-between">
+    <div class="flex justify-between items-center text-white max-w-lg mx-auto w-full">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+        <span class="text-xs font-mono font-bold uppercase tracking-wider">AR Alignment Crosshair (Active)</span>
+      </div>
+      <button onclick="toggleARModal()" class="text-slate-400 hover:text-white text-2xl font-bold px-2">&times;</button>
+    </div>
+
+    <!-- Viewfinder HUD Box -->
+    <div class="relative w-full max-w-lg mx-auto h-[65vh] border border-cyan-500/40 rounded-3xl flex items-center justify-center overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-b from-indigo-950/25 via-black/80 to-slate-950"></div>
+      
+      <!-- Central Alignment Crosshair -->
+      <div class="absolute w-28 h-28 border border-cyan-400/60 rounded-full flex items-center justify-center">
+        <div class="w-2.5 h-2.5 bg-cyan-400 rounded-full shadow-[0_0_10px_#12d6c7]"></div>
+        <div class="absolute w-44 h-[1px] bg-cyan-400/40"></div>
+        <div class="absolute h-44 w-[1px] bg-cyan-400/40"></div>
+      </div>
+
+      <!-- AR Projected Moon Marker -->
+      <div class="absolute top-16 left-16 flex items-center gap-2.5 p-2 rounded-xl bg-black/75 border border-amber-400/60 backdrop-blur-md">
+        <div class="w-7 h-7 rounded-full bg-amber-200 shadow-[0_0_15px_#fde047]"></div>
+        <div class="text-[10px] font-mono text-amber-300">
+          <div class="font-bold">Moon Disk Locked</div>
+          <div>Elev: 58.3° · Az: 142° SE</div>
+        </div>
+      </div>
+
+      <!-- Flight Path Overlay Line -->
+      <div class="absolute inset-x-8 top-1/2 transform -rotate-12 border-t-2 border-dashed border-amber-400/70 flex justify-end pr-4">
+        <span class="text-[9px] font-mono text-amber-300 bg-black/80 px-1 rounded -translate-y-3">ISS Trajectory &rarr;</span>
+      </div>
+
+      <div class="absolute bottom-5 inset-x-5 text-center text-xs text-cyan-300 font-mono bg-black/75 backdrop-blur-md py-2 px-3 rounded-xl border border-cyan-500/20">
+        Align your camera lens with the center crosshair for target transit capture
+      </div>
+    </div>
+
+    <div class="max-w-lg mx-auto w-full">
+      <button onclick="toggleARModal()" class="w-full py-3 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs hover:bg-cyan-400 transition-all">
+        Exit AR Camera
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= SCRIPTS & CALCULATOR LOGIC ================= -->
+  <script>
+    // Tab & View Navigation
+    function showView(viewId) {
+      const views = ['dashboard', 'dof', 'nd', 'astro', 'moon', 'fov'];
+      views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        const tab = document.getElementById(`tab-${v}`);
+        if (el) el.classList.add('hidden');
+        if (tab) tab.classList.remove('tab-active');
+      });
+
+      const activeView = document.getElementById(`view-${viewId}`);
+      const activeTab = document.getElementById(`tab-${viewId}`);
+      if (activeView) activeView.classList.remove('hidden');
+      if (activeTab) activeTab.classList.add('tab-active');
+
+      // Update bottom nav active indicator
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('text-cyan-400'));
+      const bnav = document.getElementById(`bnav-${viewId}`) || document.getElementById('bnav-dashboard');
+      if (bnav) bnav.classList.add('text-cyan-400');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // AR Modal Toggle
+    function toggleARModal() {
+      const el = document.getElementById('arOverlay');
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        el.classList.add('flex');
+      } else {
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+      }
+    }
+
+    // Geolocation Detection
+    function detectLocation() {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const lat = pos.coords.latitude.toFixed(2);
+          const lon = Math.abs(pos.coords.longitude.toFixed(2));
+          const latDir = pos.coords.latitude >= 0 ? 'N' : 'S';
+          const lonDir = pos.coords.longitude >= 0 ? 'E' : 'W';
+          document.getElementById('headerCoords').textContent = `${lat}° ${latDir}, ${lon}° ${lonDir}`;
+        }, () => {
+          alert("GPS permission not granted or location unavailable. Using Atlanta, GA coordinates.");
+        });
+      }
+    }
+
+    // 10-Stop ND Timer Countdown logic
+    let timerTotal = 128; // 2m 08s
+    let timerRemaining = 128;
+    let timerTimer = null;
+    let isRunning = false;
+
+    function toggleTimer() {
+      const dashBtn = document.getElementById('dashTimerBtn');
+      const mainBtn = document.getElementById('btnMainTimer');
+
+      if (!isRunning) {
+        isRunning = true;
+        if (dashBtn) { dashBtn.textContent = 'Pause'; dashBtn.classList.replace('text-amber-300', 'text-red-400'); }
+        if (mainBtn) { mainBtn.textContent = 'Pause Countdown'; mainBtn.classList.replace('bg-amber-500', 'bg-red-500'); }
+
+        timerTimer = setInterval(() => {
+          if (timerRemaining > 0) {
+            timerRemaining--;
+            updateTimerDisplay();
+          } else {
+            clearInterval(timerTimer);
+            isRunning = false;
+            if (dashBtn) dashBtn.textContent = 'Exposure Done!';
+            if (mainBtn) mainBtn.textContent = 'Exposure Complete';
+          }
+        }, 1000);
+      } else {
+        clearInterval(timerTimer);
+        isRunning = false;
+        if (dashBtn) { dashBtn.textContent = 'Resume'; dashBtn.classList.replace('text-red-400', 'text-amber-300'); }
+        if (mainBtn) { mainBtn.textContent = 'Resume Timer'; mainBtn.classList.replace('bg-red-500', 'bg-amber-500'); }
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerTimer);
+      isRunning = false;
+      timerRemaining = timerTotal;
+      updateTimerDisplay();
+      const dashBtn = document.getElementById('dashTimerBtn');
+      const mainBtn = document.getElementById('btnMainTimer');
+      if (dashBtn) { dashBtn.textContent = 'Start'; dashBtn.classList.replace('text-red-400', 'text-amber-300'); }
+      if (mainBtn) { mainBtn.textContent = 'Start Timer'; mainBtn.classList.replace('bg-red-500', 'bg-amber-500'); }
+    }
+
+    function updateTimerDisplay() {
+      const m = Math.floor(timerRemaining / 60).toString().padStart(2, '0');
+      const s = (timerRemaining % 60).toString().padStart(2, '0');
+      const str = `${m}:${s}`;
+
+      const dashDisp = document.getElementById('dashTimerDisplay');
+      const bigDisp = document.getElementById('bigTimerDisplay');
+      if (dashDisp) dashDisp.textContent = str;
+      if (bigDisp) bigDisp.textContent = str;
+
+      const progress = timerRemaining / timerTotal;
+      const offset = 283 - (283 * progress);
+      const dashCircle = document.getElementById('dashTimerCircle');
+      const bigCircle = document.getElementById('bigTimerCircle');
+      if (dashCircle) dashCircle.style.strokeDashoffset = offset;
+      if (bigCircle) bigCircle.style.strokeDashoffset = offset;
+    }
+
+    // ND Exposure Calculation
+    let currentStops = 10;
+    function selectND(stops) {
+      currentStops = stops;
+      document.querySelectorAll('.nd-btn').forEach(btn => {
+        btn.classList.remove('bg-amber-500/20', 'border-amber-400', 'text-amber-300');
+        btn.classList.add('bg-slate-900', 'border-slate-700', 'text-slate-300');
+      });
+      event.target.classList.add('bg-amber-500/20', 'border-amber-400', 'text-amber-300');
+      calcNDExposure();
+    }
+
+    function calcNDExposure() {
+      const baseSec = parseFloat(document.getElementById('baseShutterSelect').value);
+      const factor = Math.pow(2, currentStops);
+      const totalSec = Math.round(baseSec * factor);
+      timerTotal = totalSec;
+      timerRemaining = totalSec;
+      
+      const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+      const s = (totalSec % 60).toString().padStart(2, '0');
+      document.getElementById('ndResultTime').textContent = `${m}m ${s}s`;
+      updateTimerDisplay();
+    }
+
+    // Depth of Field Calculation
+    const apList = [1.4, 2.0, 2.8, 4.0, 5.6, 8.0, 11, 16, 22];
+    function runDoFCalc() {
+      const crop = parseFloat(document.getElementById('calcSensor').value);
+      const f = parseFloat(document.getElementById('inputFocal').value);
+      const apIdx = parseInt(document.getElementById('inputApertureIdx').value);
+      const N = apList[apIdx];
+      const s = parseFloat(document.getElementById('inputDist').value);
+
+      document.getElementById('valFocal').textContent = `${f} mm`;
+      document.getElementById('valAperture').textContent = `f/${N}`;
+      document.getElementById('valDist').textContent = `${s.toFixed(1)} m`;
+
+      const coc = 0.029 / crop; // Circle of Confusion (mm)
+      const H = ((f * f) / (N * coc) + f) / 1000; // Hyperfocal (meters)
+
+      const Dn = (s * H) / (H + s);
+      const Df = H > s ? (s * H) / (H - s) : Infinity;
+
+      document.getElementById('outHyperfocalMain').textContent = `${H.toFixed(1)} m`;
+      document.getElementById('outNearLimitMain').textContent = `${Dn.toFixed(2)} m`;
+      document.getElementById('outFarLimitMain').textContent = Df === Infinity ? '∞' : `${Df.toFixed(2)} m`;
+      document.getElementById('outTotalDofMain').textContent = Df === Infinity ? '∞' : `${(Df - Dn).toFixed(2)} m`;
+
+      // Update Dashboard values
+      const dAp = document.getElementById('dashAperture');
+      const dHyp = document.getElementById('dashHyperfocal');
+      if (dAp) dAp.textContent = `f/${N}`;
+      if (dHyp) dHyp.textContent = `${H.toFixed(1)}m`;
+    }
+
+    // Astrophotography Calculations
+    function calcAstroRules() {
+      const pitch = parseFloat(document.getElementById('astroPitch').value) || 4.2;
+      const f = parseFloat(document.getElementById('astroFocal').value) || 35;
+      const N = parseFloat(document.getElementById('astroAp').value) || 2.8;
+
+      // 500 Rule (assuming Full Frame)
+      const t500 = (500 / f).toFixed(1);
+      // NPF Rule: t = (35 * N + 30 * p) / f
+      const tNpf = ((35 * N + 30 * pitch) / f).toFixed(1);
+
+      document.getElementById('out500Rule').textContent = `${t500}s`;
+      document.getElementById('outNpfRule').textContent = `${tNpf}s`;
+
+      const dashAstro = document.getElementById('dashAstroShutter');
+      if (dashAstro) dashAstro.textContent = `${tNpf}s`;
+    }
+
+    function calcHyperlapseSuite() {
+      const clip = parseFloat(document.getElementById('hlClip').value) || 10;
+      const fps = parseFloat(document.getElementById('hlFpsVal').value) || 24;
+      const interval = parseFloat(document.getElementById('hlIntVal').value) || 5;
+
+      const totalShots = Math.round(clip * fps);
+      const totalSec = totalShots * interval;
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+
+      document.getElementById('outHlPhotos').textContent = `${totalShots} shots`;
+      document.getElementById('outHlTime').textContent = `${mins}m ${secs.toString().padStart(2, '0')}s`;
+    }
+
+    // Field of View Converter
+    function calcFoV() {
+      const f = parseFloat(document.getElementById('fovFocalInput').value);
+      document.getElementById('fovFocalVal').textContent = `${f} mm`;
+      document.getElementById('fovMfEq').textContent = `${(f * 0.79).toFixed(1)} mm`;
+      document.getElementById('fovFfEq').textContent = `${(f * 1.0).toFixed(1)} mm`;
+      document.getElementById('fovApscEq').textContent = `${(f * 1.5).toFixed(1)} mm`;
+      document.getElementById('fovMftEq').textContent = `${(f * 2.0).toFixed(1)} mm`;
+    }
+
+    // Initialize all calculators
+    runDoFCalc();
+    calcAstroRules();
+    calcHyperlapseSuite();
+    calcFoV();
+    calcNDExposure();
+  </script>
+</body>
+</html>
