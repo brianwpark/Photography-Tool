@@ -111,6 +111,19 @@
      - Display mode selector: `Sun`, `Moon`, or `Both`.
      - Mouse and touch drag navigation for desktop and non-sensor testing.
 
+## Command Turn 7: Fix Black Background & Enhance AR Fluidity and Responsiveness
+- **User Request**: "why is the background black? I would also want the AR to be more easier to move with"
+- **Root Cause of Black Background**:
+  1. In the component, `<video>` was conditionally mounted with `{hasCamera && stream ? <video> : <div>}`. Because `videoRef.current` was `null` during initial mount, `srcObject` was not attached when stream arrived, leaving the `<video>` tag black.
+  2. Fallback sky gradient at night (e.g. midnight, when Sun altitude < -6°) evaluated to dark black `#020617`.
+- **Fixes Implemented**:
+  1. `<video>` tag is now always mounted in DOM with `useEffect` attaching `videoRef.current.srcObject = stream` and executing `play()` as soon as `stream` is ready.
+  2. Added a photorealistic daytime / golden hour landscape scene backdrop (monument, open blue sky, reflective water) whenever camera feed is inactive or in simulated mode, so it is never a black void.
+  3. Added cross-platform native compass heading (`e.webkitCompassHeading` for iOS Safari) for responsive real-world magnetometer tracking.
+  4. Upgraded swipe sensitivity to fluid `0.42 deg/px` with continuous delta tracking for effortless 360° pan and tilt.
+  5. Added quick-navigation radar buttons: `[Find Sun]`, `[Find Moon]`, and cardinal jumps `N`, `E`, `S`, `W` to instantly center on celestial targets.
+
+
 
 
 

@@ -105,6 +105,15 @@
   - [x] Verified full build with `npm run build` (0 warnings, 0 errors).
   - [x] Committed and pushed to GitHub `Deploy` branch (`8c00159`).
 
+- [x] **Step 12: AR Video Stream Attachment, Landscape Backdrop & Fluid Motion Controls**
+  - [x] Fixed black background: Kept `<video>` permanently mounted in the DOM and attached `srcObject` via dedicated `useEffect([stream])`.
+  - [x] Replaced dark night void fallback with a realistic architectural sky/water landscape scene inspired by the reference photo.
+  - [x] Added iOS native compass heading (`e.webkitCompassHeading`) so real device sensors track accurately.
+  - [x] Increased touch swipe sensitivity from 0.15 to 0.42 deg/pixel with continuous delta tracking for effortless 360° pan and tilt.
+  - [x] Added quick-target radar buttons (`Find Sun`, `Find Moon`, `N`, `E`, `S`, `W`) for instant alignment.
+  - [x] Synced to `D:\Github Repositories\Photography-Tool` and pushed commit `52297df` to `Deploy`.
+
+
 
 
 
