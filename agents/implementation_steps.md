@@ -113,6 +113,14 @@
   - [x] Added quick-target radar buttons (`Find Sun`, `Find Moon`, `N`, `E`, `S`, `W`) for instant alignment.
   - [x] Synced to `D:\Github Repositories\Photography-Tool` and pushed commit `52297df` to `Deploy`.
 
+- [x] **Step 13: "Apply to DoF Calculator" Navigation & Value Transfer**
+  - [x] Fixed navigation in `FovSuiteView.jsx`: Replaced hardcoded `setActiveTab('fov')` with delegated `onSelectView`.
+  - [x] Updated `SubjectDistanceView.jsx` to pass `{ distance, focalLength, sensorId }` to `onSelectView('dof', 'calc', ...)`.
+  - [x] Added `dofParams` state and parameter handling in `App.jsx`.
+  - [x] Updated `DofSuiteView.jsx` and `DofView.jsx` to receive and apply transferred distance, focal length, and sensor presets, with dynamic slider scaling and confirmation toast.
+  - [x] Synced to `D:\Github Repositories\Photography-Tool` and pushed commit `a5436c3` to `Deploy`.
+
+
 
 
 

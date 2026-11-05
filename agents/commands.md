@@ -123,6 +123,23 @@
   4. Upgraded swipe sensitivity to fluid `0.42 deg/px` with continuous delta tracking for effortless 360° pan and tilt.
   5. Added quick-navigation radar buttons: `[Find Sun]`, `[Find Moon]`, and cardinal jumps `N`, `E`, `S`, `W` to instantly center on celestial targets.
 
+## Command Turn 8: Fix "Apply to DoF Calculator" Routing & Value Transfer
+- **User Request**: "Apply to DOF Calculator button in subject distance triangulation brings me to Field of views & crok factor converter. Make this button take me there to DOF Calculator. Have the values set in subject distance triangulation transfer over to DOF Calculator"
+- **Root Cause**:
+  In `FovSuiteView.jsx`, `<SubjectDistanceView onSelectView={() => setActiveTab('fov')} />` was hardcoded to switch back to the local `fov` sub-tab instead of invoking top-level navigation.
+- **Fixes Implemented**:
+  1. Updated `FovSuiteView.jsx` to receive `onSelectView` from `App.jsx` and pass it down to `SubjectDistanceView`.
+  2. Updated `SubjectDistanceView.jsx` to invoke `onSelectView('dof', 'calc', { distance, focalLength, sensorId })` from both the header and a new primary button directly inside the Results Card.
+  3. Updated `App.jsx` `handleSelectView` to store `dofParams` state and route to `activeView = 'dof'`, `suiteSubTab = 'calc'`.
+  4. Updated `DofSuiteView.jsx` to accept `dofParams` and pass them to `DofView`.
+  5. Updated `DofView.jsx` to initialize and dynamically synchronize with `initialParams`:
+     - Distance set to the calculated subject distance.
+     - Focal length set to the lens focal length.
+     - Sensor set to the selected camera sensor.
+     - Dynamic slider `max` expansion to accommodate any shooting distance.
+     - Confirmation banner displaying the applied values.
+
+
 
 
 
