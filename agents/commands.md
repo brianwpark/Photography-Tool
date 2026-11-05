@@ -145,6 +145,35 @@
   1. Removed the top header "Apply to DoF Calculator" button from `SubjectDistanceView.jsx`.
   2. Retained the prominent action button directly below the Required Shooting Distance result card (`Apply Xm & Ymm to DoF Calculator`).
 
+## Command Turn 10: Transit Chaser Feature Analysis Integration (`transit_chaser_feature_analysis.md`)
+- **Source**: `c:\Users\Brian\Downloads\transit_chaser_feature_analysis.md`
+- **User Directive**: "Use this md to improve the Moon & Transits feature"
+- **Key Transit Chaser Capabilities Integrated**:
+  1. **Dual Chaser Modes**:
+     - *Easy Mode*: 1-tap automated configuration with optimal 35km radius, 15m warning window, and 1.5° tolerance.
+     - *Manual Mode*: Granular parameter control over search radius (10-100 km), prediction window (3-30 min), angular margin (0.1°-4.0°), 3D Boosted Airspace vectors, and takeoff climb-out corrections.
+  2. **Targets**: Combined Sun & Moon, Moon Only, and Sun Only transits.
+  3. **Plane Watch & Fleet Filters**:
+     - Boeing Fleet (747-8, 777-300ER, 787-9 Dreamliner, 737 MAX).
+     - Airbus Fleet (A380-800, A350-1000, A330neo, A321neo).
+     - ⭐ Fun Planes (Special Livery highlights: Emirates Expo 2020, Qantas Yam Dreaming, ANA Star Wars R2-D2).
+     - Orbital Space Stations (ISS, Tiangong).
+     - Rocket Launches (Falcon 9 twilight ascent plumes).
+  4. **3D Airspace Geometry**:
+     - High-precision Ingress, Centerline, and Egress timing down to tenths of a second.
+     - Telemetry: Flight level (ft), Altitude (m), Ground speed (knots & km/h), Slant range to observer, Angular size in arcsec.
+     - Contrail risk index and recommended camera shutter speeds.
+  5. **Audio Tests & Alerts**:
+     - Synthesized radar ping and transit alert chime check using Web Audio API in `sound.js`.
+     - Live countdown alert banner for the closest impending pass.
+  6. **Spatial Corridor & Distance Bands Planner**:
+     - Evaluates 0km (Centerline), 1km, 2km, 5km, and 10km distance bands with framing quality scores.
+     - 3D celestial disc simulator with adjustable centerline offset slider.
+  7. **Transit Photography & Solar Safety Guide**:
+     - Critical Solar ND 5.0 (16.6-stop) safety warnings.
+     - Camera setup: 400-1200mm telephoto framing, 1/2000s-1/4000s shutter speeds for 850 km/h aircraft, high-speed burst shooting.
+
+
 
 
 
