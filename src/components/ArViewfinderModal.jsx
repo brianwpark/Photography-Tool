@@ -18,26 +18,28 @@ import {
   ExternalLink,
   RefreshCw,
   Eye,
-  Check
+  Check,
+  Target,
+  Image as ImageIcon
 } from 'lucide-react';
 import SunCalc from 'suncalc';
 import { radToDeg, degToRad, getDailyCelestialPath, getMoonPhaseName } from '../services/ephemeris.js';
 
 // Cardinal & intercardinal compass markers
 const COMPASS_POINTS = [
-  { label: 'N', deg: 0 },
+  { label: 'N', deg: 0, isCardinal: true },
   { label: '15°', deg: 15 },
   { label: '30°', deg: 30 },
   { label: 'NE', deg: 45 },
   { label: '60°', deg: 60 },
   { label: '75°', deg: 75 },
-  { label: 'E', deg: 90 },
+  { label: 'E', deg: 90, isCardinal: true },
   { label: '105°', deg: 105 },
   { label: '120°', deg: 120 },
   { label: 'SE', deg: 135 },
   { label: '150°', deg: 150 },
   { label: '165°', deg: 165 },
-  { label: 'S', deg: 180 },
+  { label: 'S', deg: 180, isCardinal: true },
   { label: '195°', deg: 195 },
   { label: '210°', deg: 210 },
   { label: 'SW', deg: 225 },
@@ -69,26 +71,29 @@ export default function ArViewfinderModal({
   const [hasCamera, setHasCamera] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [bgSceneMode, setBgSceneMode] = useState('auto'); // 'auto', 'camera', 'landscape'
 
   // Dimensions
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   // Orientation & Compass Calibration
   // beta: 90 is upright vertical portrait looking at horizon
-  const [deviceOrientation, setDeviceOrientation] = useState({ alpha: 260, beta: 90, gamma: 0 });
-  const [calibrationOffset, setCalibrationOffset] = useState(0); // Manual visual compass calibration offset (-30 to +30 deg)
+  const [deviceOrientation, setDeviceOrientation] = useState({ alpha: 250, beta: 90, gamma: 0 });
+  const [calibrationOffset, setCalibrationOffset] = useState(0); // Manual visual compass calibration offset (-45 to +45 deg)
   const [elevationOffset, setElevationOffset] = useState(0); // Manual pitch offset (-30 to +30 deg)
   const [isCalibrating, setIsCalibrating] = useState(false);
 
-  // Manual Drag Pan/Tilt for desktop / testing
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef({ x: 0, y: 0, alpha: 260, beta: 90 });
+  // Touch / Drag Pan & Tilt state (fluid & responsive)
+  const isDraggingRef = useRef(false);
+  const lastTouchPosRef = useRef({ x: 0, y: 0 });
 
   // Date & Time Controls
   const [selectedDate, setSelectedDate] = useState(() => new Date(initialDate));
   const [minuteOfDay, setMinuteOfDay] = useState(() => {
     const d = new Date(initialDate);
-    return d.getHours() * 60 + d.getMinutes();
+    // If opened during night hours (e.g. midnight), default to late afternoon (6:50 PM = 1130 min) like the reference photo so the Sun trajectory is immediately visible!
+    const mins = d.getHours() * 60 + d.getMinutes();
+    return (mins < 360 || mins > 1260) ? 1130 : mins;
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const playTimerRef = useRef(null);
@@ -191,24 +196,25 @@ export default function ArViewfinderModal({
       setStream(mediaStream);
       setHasCamera(true);
       setCameraError(null);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play().catch(e => console.warn('Video play caught:', e));
-        };
-      }
     } catch (err) {
       setHasCamera(false);
       if (err.message === 'INSECURE_CONTEXT') {
         setCameraError('INSECURE_CONTEXT');
       } else {
-        setCameraError(err.message || 'Camera unavailable. Using visual simulation HUD.');
+        setCameraError(err.message || 'Camera unavailable. Showing visual simulated scene.');
       }
     } finally {
       setIsRequestingPermission(false);
     }
   }, [getCameraStream]);
+
+  // Dedicated effect to attach stream to video element whenever stream changes
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(e => console.warn('Video play error:', e));
+    }
+  }, [stream]);
 
   // Handle opening / closing and deviceorientation
   useEffect(() => {
@@ -223,13 +229,27 @@ export default function ArViewfinderModal({
 
     startCamera();
 
+    // iOS and Android cross-platform orientation handler
     const handleOrientation = (e) => {
-      if (e.alpha !== null && e.alpha !== undefined) {
-        setDeviceOrientation({
-          alpha: e.alpha,
-          beta: e.beta ?? 90,
-          gamma: e.gamma ?? 0
-        });
+      // 1. Compass Heading:
+      // On iOS: e.webkitCompassHeading is the true native 0-360° compass heading!
+      // On Android / W3C: e.alpha increases counter-clockwise, so (360 - e.alpha) is compass heading
+      let compassHeading = e.webkitCompassHeading;
+      if (compassHeading === undefined || compassHeading === null) {
+        if (e.alpha !== null && e.alpha !== undefined) {
+          compassHeading = (360 - e.alpha) % 360;
+        }
+      }
+
+      // If user is currently dragging manually, skip sensor update so it doesn't fight the user's thumb
+      if (isDraggingRef.current) return;
+
+      if (compassHeading !== undefined && compassHeading !== null) {
+        setDeviceOrientation(prev => ({
+          alpha: compassHeading,
+          beta: e.beta ?? prev.beta,
+          gamma: e.gamma ?? prev.gamma
+        }));
       }
     };
 
@@ -263,42 +283,63 @@ export default function ArViewfinderModal({
     setIsPlaying(false);
   };
 
+  // Center / Target Sun or Moon directly
+  const handleTargetCelestial = (type) => {
+    if (type === 'sun') {
+      setDisplayMode('sun');
+      setDeviceOrientation(prev => ({
+        ...prev,
+        alpha: currentSunMoon.sun.azimuth,
+        beta: 90 + currentSunMoon.sun.altitude
+      }));
+    } else if (type === 'moon') {
+      setDisplayMode('moon');
+      setDeviceOrientation(prev => ({
+        ...prev,
+        alpha: currentSunMoon.moon.azimuth,
+        beta: 90 + currentSunMoon.moon.altitude
+      }));
+    }
+  };
+
+  // Quick jump to cardinal compass bearing
+  const handleJumpToBearing = (deg) => {
+    setDeviceOrientation(prev => ({
+      ...prev,
+      alpha: deg,
+      beta: 90
+    }));
+  };
+
+  // Fluid and responsive touch / mouse panning
+  const handleTouchOrMouseDown = (clientX, clientY) => {
+    isDraggingRef.current = true;
+    lastTouchPosRef.current = { x: clientX, y: clientY };
+  };
+
+  const handleTouchOrMouseMove = (clientX, clientY) => {
+    if (!isDraggingRef.current) return;
+    const dx = clientX - lastTouchPosRef.current.x;
+    const dy = clientY - lastTouchPosRef.current.y;
+    lastTouchPosRef.current = { x: clientX, y: clientY };
+
+    // Fluid sensitivity: ~0.4° per pixel allows natural 1:1 camera swipe
+    setDeviceOrientation(prev => ({
+      ...prev,
+      alpha: (prev.alpha - dx * 0.42 + 360) % 360,
+      beta: Math.max(10, Math.min(170, prev.beta + dy * 0.35))
+    }));
+  };
+
+  const handleTouchOrMouseUp = () => {
+    isDraggingRef.current = false;
+  };
+
   // Switch to HTTPS if insecure
   const handleSwitchToHttps = () => {
     if (typeof window !== 'undefined') {
       window.location.href = `https://${window.location.hostname}:3000${window.location.pathname}${window.location.search}`;
     }
-  };
-
-  // Drag handlers for desktop / manual touch panning
-  const handleTouchOrMouseDown = (clientX, clientY) => {
-    setIsDragging(true);
-    dragStartRef.current = {
-      x: clientX,
-      y: clientY,
-      alpha: deviceOrientation.alpha,
-      beta: deviceOrientation.beta
-    };
-  };
-
-  const handleTouchOrMouseMove = (clientX, clientY) => {
-    if (!isDragging) return;
-    const dx = clientX - dragStartRef.current.x;
-    const dy = clientY - dragStartRef.current.y;
-
-    // 1 pixel = ~0.2 degrees
-    const newAlpha = (dragStartRef.current.alpha - dx * 0.15 + 360) % 360;
-    const newBeta = Math.max(10, Math.min(170, dragStartRef.current.beta + dy * 0.15));
-
-    setDeviceOrientation(prev => ({
-      ...prev,
-      alpha: newAlpha,
-      beta: newBeta
-    }));
-  };
-
-  const handleTouchOrMouseUp = () => {
-    setIsDragging(false);
   };
 
   // Effective Heading & Elevation
@@ -350,15 +391,14 @@ export default function ArViewfinderModal({
       y: screenY,
       dAz,
       dAlt,
-      isVisible: screenX >= -80 && screenX <= dimensions.width + 80 && screenY >= -80 && screenY <= dimensions.height + 80
+      isVisible: screenX >= -100 && screenX <= dimensions.width + 100 && screenY >= -100 && screenY <= dimensions.height + 100
     };
   }, [currentHeading, currentPitch, currentRoll, focalX, focalY, dimensions.width, dimensions.height]);
 
   // Generate SVG Path for an Elevation line (0°, 10°, 20°, etc.)
   const getElevationPath = useCallback((elevDeg) => {
     const points = [];
-    // Sample across the forward 100-degree azimuth cone around current heading
-    for (let offset = -48; offset <= 48; offset += 3) {
+    for (let offset = -50; offset <= 50; offset += 3) {
       const az = (currentHeading + offset + 360) % 360;
       const pt = projectToScreen(az, elevDeg);
       if (pt) {
@@ -372,7 +412,6 @@ export default function ArViewfinderModal({
   // Generate SVG Path for an Azimuthal line (vertical meridian)
   const getAzimuthPath = useCallback((azDeg) => {
     const points = [];
-    // Sample across vertical pitch cone: -30° to +80°
     for (let alt = -30; alt <= 80; alt += 4) {
       const pt = projectToScreen(azDeg, alt);
       if (pt) {
@@ -454,12 +493,15 @@ export default function ArViewfinderModal({
     return `${m}/${d}/${y}, ${timeStr}`;
   }, [currentDateTime]);
 
+  // Determine whether to show camera feed or visual landscape simulation
+  const isShowingLiveCamera = hasCamera && stream && bgSceneMode !== 'landscape';
+
   if (!isOpen) return null;
 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-50 flex flex-col bg-black overflow-hidden select-none touch-none"
+      className="fixed inset-0 z-50 flex flex-col bg-[#0b1320] overflow-hidden select-none touch-none"
       onMouseDown={(e) => handleTouchOrMouseDown(e.clientX, e.clientY)}
       onMouseMove={(e) => handleTouchOrMouseMove(e.clientX, e.clientY)}
       onMouseUp={handleTouchOrMouseUp}
@@ -475,46 +517,68 @@ export default function ArViewfinderModal({
       }}
       onTouchEnd={handleTouchOrMouseUp}
     >
-      {/* 1. Camera Video Feed OR Photographic Realistic Sky/Landscape Simulator */}
-      {hasCamera && stream ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-        />
-      ) : (
-        <div className="absolute inset-0 bg-[#070c14] pointer-events-none overflow-hidden">
-          {/* Realistic Sky Gradient (Day / Twilight / Night depending on Sun altitude) */}
+      {/* 1. Camera Video Feed (Always mounted so videoRef is never null) */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        webkit-playsinline="true"
+        className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-500 ${
+          isShowingLiveCamera ? 'opacity-100 z-0' : 'opacity-0 -z-10'
+        }`}
+      />
+
+      {/* 2. Visual Simulated Landscape & Sky Backdrop (Active when camera is off or in simulation mode) */}
+      {!isShowingLiveCamera && (
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+          {/* Photorealistic Sky Gradient matching reference photo */}
           <div
-            className="absolute inset-0 transition-colors duration-700"
+            className="absolute inset-0 transition-all duration-700"
             style={{
               background: currentSunMoon.sun.altitude > 0
-                ? 'linear-gradient(to bottom, #1e3a8a 0%, #3b82f6 40%, #93c5fd 75%, #dbeafe 100%)'
+                ? 'linear-gradient(to bottom, #1d4ed8 0%, #38bdf8 45%, #bae6fd 75%, #e0f2fe 100%)'
                 : currentSunMoon.sun.altitude > -6
-                ? 'linear-gradient(to bottom, #0f172a 0%, #1e1b4b 30%, #7c2d12 65%, #f97316 100%)'
-                : 'linear-gradient(to bottom, #020617 0%, #0b0f19 50%, #111827 100%)'
+                ? 'linear-gradient(to bottom, #1e1b4b 0%, #4338ca 30%, #c2410c 65%, #ea580c 85%, #f97316 100%)'
+                : 'linear-gradient(to bottom, #090d16 0%, #111c30 40%, #1e293b 80%, #334155 100%)'
             }}
           />
-          {/* Subtle star field at night */}
-          {currentSunMoon.sun.altitude < -6 && (
-            <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:32px_32px]" />
-          )}
-          {/* Distant horizon silhouette */}
-          <div className="absolute bottom-0 inset-x-0 h-1/4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+
+          {/* Soft atmospheric clouds layer */}
+          <div className="absolute inset-x-0 top-0 h-3/5 opacity-40 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/30 via-transparent to-transparent pointer-events-none" />
+
+          {/* Distant Monument / Landscape Silhouette & Water Reflection (from reference photo) */}
+          <div className="absolute bottom-0 inset-x-0 h-2/5 flex flex-col justify-end pointer-events-none">
+            {/* Architectural Monument Silhouette */}
+            <div className="relative w-full h-32 flex items-end justify-center opacity-85">
+              {/* Central Gate/Columns */}
+              <div className="w-20 h-24 bg-[#1b2432] rounded-t-sm shadow-2xl relative mx-1">
+                <div className="absolute bottom-0 inset-x-3 h-16 bg-[#0f172a] rounded-t-sm" />
+              </div>
+              <div className="w-16 h-20 bg-[#222e40] rounded-t-sm shadow-xl mx-2" />
+              <div className="w-14 h-18 bg-[#1e293b] rounded-t-sm shadow-xl mx-1" />
+              {/* Tree line on horizons */}
+              <div className="absolute bottom-0 left-0 w-1/3 h-16 bg-gradient-to-r from-[#17202e] to-transparent rounded-t-full opacity-90" />
+              <div className="absolute bottom-0 right-0 w-1/3 h-16 bg-gradient-to-l from-[#17202e] to-transparent rounded-t-full opacity-90" />
+            </div>
+
+            {/* Reflecting Pool / Water Surface */}
+            <div className="w-full h-24 bg-gradient-to-b from-[#16202e] to-[#0a0f18] opacity-95 relative border-t border-white/20">
+              <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px)] [background-size:24px_100%]" />
+            </div>
+          </div>
         </div>
       )}
 
-      {/* 2. Fullscreen SVG Overlay for Celestial Paths, Horizon & Elevation Grid */}
+      {/* 3. Fullscreen SVG Overlay for Celestial Paths, Horizon & Elevation Grid */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none"
+        className="absolute inset-0 w-full h-full z-10 pointer-events-none"
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
       >
         <defs>
           {/* Sun disc glow filters */}
           <filter id="sun-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -522,9 +586,9 @@ export default function ArViewfinderModal({
           </filter>
           <radialGradient id="sun-gradient" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#FFFBEB" />
-            <stop offset="40%" stopColor="#FBBF24" />
+            <stop offset="35%" stopColor="#FBBF24" />
             <stop offset="85%" stopColor="#F59E0B" />
-            <stop offset="100%" stopColor="#D97706" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="#D97706" stopOpacity="0.9" />
           </radialGradient>
 
           {/* Moon disc gradient */}
@@ -547,9 +611,9 @@ export default function ArViewfinderModal({
                 <path
                   key={`az-line-${idx}`}
                   d={path}
-                  stroke={isMajor ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.22)'}
+                  stroke={isMajor ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.25)'}
                   strokeWidth={isMajor ? '1.5' : '1'}
-                  strokeDasharray={isMajor ? undefined : '4 4'}
+                  strokeDasharray={isMajor ? undefined : '5 5'}
                   fill="none"
                 />
               );
@@ -565,7 +629,7 @@ export default function ArViewfinderModal({
                 <g key={`elev-group-${elev}`}>
                   <path
                     d={path}
-                    stroke={isHorizon ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.35)'}
+                    stroke={isHorizon ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.38)'}
                     strokeWidth={isHorizon ? '2.5' : '1.2'}
                     fill="none"
                   />
@@ -575,7 +639,7 @@ export default function ArViewfinderModal({
                     if (!labelPt || !labelPt.isVisible) return null;
                     return (
                       <g transform={`translate(${labelPt.x}, ${labelPt.y})`}>
-                        <circle r="16" fill="rgba(255, 255, 255, 0.22)" stroke="rgba(255, 255, 255, 0.45)" strokeWidth="1" />
+                        <circle r="16" fill="rgba(255, 255, 255, 0.25)" stroke="rgba(255, 255, 255, 0.5)" strokeWidth="1" />
                         <text
                           y="4"
                           textAnchor="middle"
@@ -608,8 +672,8 @@ export default function ArViewfinderModal({
                   {/* Frosted circular badge as in PhotoPills reference photo */}
                   <circle
                     r={isCardinal ? 26 : 22}
-                    fill="rgba(255, 255, 255, 0.32)"
-                    stroke="rgba(255, 255, 255, 0.65)"
+                    fill="rgba(255, 255, 255, 0.35)"
+                    stroke="rgba(255, 255, 255, 0.75)"
                     strokeWidth="1.5"
                     style={{ backdropFilter: 'blur(4px)' }}
                   />
@@ -639,7 +703,7 @@ export default function ArViewfinderModal({
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              filter="drop-shadow(0 0 6px rgba(245, 158, 11, 0.6))"
+              filter="drop-shadow(0 0 6px rgba(245, 158, 11, 0.7))"
             />
 
             {/* Hourly Markers & Time Labels along Sun Path */}
@@ -650,10 +714,10 @@ export default function ArViewfinderModal({
               return (
                 <g key={`sun-hour-${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
                   {/* Trajectory dot */}
-                  <circle r="5" fill="#FBBF24" stroke="#78350F" strokeWidth="1.5" />
-                  {/* Time label text (e.g. "6:00 PM", "7:00 PM") */}
+                  <circle r="5.5" fill="#FBBF24" stroke="#78350F" strokeWidth="1.5" />
+                  {/* Time label text (e.g. "6:00 PM", "7:00 PM") matching reference photo */}
                   <text
-                    x="10"
+                    x="11"
                     y="-8"
                     fill="#FDE68A"
                     fontSize="13"
@@ -661,7 +725,7 @@ export default function ArViewfinderModal({
                     fontWeight="700"
                     stroke="#451A03"
                     strokeWidth="0.75"
-                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.8))"
+                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.85))"
                   >
                     {marker.timeLabel}
                   </text>
@@ -681,7 +745,7 @@ export default function ArViewfinderModal({
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              filter="drop-shadow(0 0 6px rgba(56, 189, 248, 0.6))"
+              filter="drop-shadow(0 0 6px rgba(56, 189, 248, 0.7))"
             />
 
             {/* Hourly Markers along Moon Path */}
@@ -691,9 +755,9 @@ export default function ArViewfinderModal({
 
               return (
                 <g key={`moon-hour-${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
-                  <circle r="4.5" fill="#38BDF8" stroke="#0C4A6E" strokeWidth="1.5" />
+                  <circle r="5" fill="#38BDF8" stroke="#0C4A6E" strokeWidth="1.5" />
                   <text
-                    x="10"
+                    x="11"
                     y="-8"
                     fill="#BAE6FD"
                     fontSize="12"
@@ -701,7 +765,7 @@ export default function ArViewfinderModal({
                     fontWeight="700"
                     stroke="#082F49"
                     strokeWidth="0.75"
-                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.8))"
+                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.85))"
                   >
                     {marker.timeLabel}
                   </text>
@@ -715,15 +779,15 @@ export default function ArViewfinderModal({
         {currentSunScreen && currentSunScreen.isVisible && (
           <g transform={`translate(${currentSunScreen.x}, ${currentSunScreen.y})`}>
             {/* Outer Corona */}
-            <circle r="46" fill="#F59E0B" opacity="0.25" filter="url(#sun-glow)" />
-            <circle r="36" fill="#FBBF24" opacity="0.45" />
+            <circle r="48" fill="#F59E0B" opacity="0.3" filter="url(#sun-glow)" />
+            <circle r="38" fill="#FBBF24" opacity="0.5" />
             {/* Bright Sun Core */}
-            <circle r="26" fill="url(#sun-gradient)" stroke="#FFFBEB" strokeWidth="2" />
+            <circle r="28" fill="url(#sun-gradient)" stroke="#FFFBEB" strokeWidth="2.5" />
             {/* Center pinpoint */}
-            <circle r="2" fill="#FFFFFF" />
+            <circle r="2.5" fill="#FFFFFF" />
             {/* Time label badge beside Sun */}
             <text
-              x="36"
+              x="38"
               y="6"
               fill="#FEF08A"
               fontSize="16"
@@ -739,16 +803,16 @@ export default function ArViewfinderModal({
         {/* --- ACTIVE MOON DISC (Selected Date & Time) --- */}
         {currentMoonScreen && currentMoonScreen.isVisible && (
           <g transform={`translate(${currentMoonScreen.x}, ${currentMoonScreen.y})`}>
-            <circle r="32" fill="#38BDF8" opacity="0.25" filter="url(#sun-glow)" />
-            <circle r="22" fill="url(#moon-gradient)" stroke="#E2E8F0" strokeWidth="1.5" />
+            <circle r="34" fill="#38BDF8" opacity="0.3" filter="url(#sun-glow)" />
+            <circle r="24" fill="url(#moon-gradient)" stroke="#E2E8F0" strokeWidth="1.5" />
             {/* Terminator shadow depending on lunar phase */}
             <path
-              d="M 0 -22 A 22 22 0 0 1 0 22 A 16 22 0 0 0 0 -22 Z"
+              d="M 0 -24 A 24 24 0 0 1 0 24 A 18 24 0 0 0 0 -24 Z"
               fill="#0F172A"
-              opacity="0.65"
+              opacity="0.7"
             />
             <text
-              x="30"
+              x="32"
               y="5"
               fill="#E0F2FE"
               fontSize="14"
@@ -762,7 +826,7 @@ export default function ArViewfinderModal({
         )}
       </svg>
 
-      {/* 3. TOP APP BAR (Styled exactly like PhotoPills Reference Photo) */}
+      {/* 4. TOP APP BAR (Styled exactly like PhotoPills Reference Photo) */}
       <div className="relative z-20 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/85 via-black/50 to-transparent pointer-events-auto">
         {/* Left: "Now" button */}
         <button
@@ -788,48 +852,64 @@ export default function ArViewfinderModal({
         </button>
       </div>
 
-      {/* 4. DATE & TIME STAMP (Top-left below header as in photo: "4/17/18, 6:51 PM") */}
-      <div className="relative z-20 px-5 pointer-events-none flex justify-between items-start">
-        <div className="text-white/90 font-mono text-sm sm:text-base font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+      {/* 5. QUICK-NAVIGATION RADAR BAR (Target Sun, Target Moon, N, E, S, W) */}
+      <div className="relative z-20 px-4 py-1 pointer-events-auto flex items-center justify-between gap-2 overflow-x-auto text-xs font-mono">
+        <div className="text-white font-mono text-sm sm:text-base font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] flex-shrink-0">
           {formattedHeaderDateTime}
         </div>
 
-        {/* Quick Mode Pill: Sun / Moon / Both */}
-        <div className="pointer-events-auto flex items-center bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/15 text-xs font-mono">
+        {/* Quick Navigation Pills for Easy Movement */}
+        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-1 rounded-full border border-white/15">
           <button
             type="button"
-            onClick={() => setDisplayMode('sun')}
-            className={`px-2.5 py-1 rounded-full transition-all flex items-center gap-1 ${
-              displayMode === 'sun'
-                ? 'bg-amber-500 text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            onClick={() => handleTargetCelestial('sun')}
+            className="px-2 py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 font-bold border border-amber-500/30 flex items-center gap-1 transition-all active:scale-95"
+            title="Point camera directly to Sun"
           >
             <Sun size={12} />
-            <span>Sun</span>
+            <span>Find Sun</span>
           </button>
+
           <button
             type="button"
-            onClick={() => setDisplayMode('moon')}
-            className={`px-2.5 py-1 rounded-full transition-all flex items-center gap-1 ${
-              displayMode === 'moon'
-                ? 'bg-sky-400 text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            onClick={() => handleTargetCelestial('moon')}
+            className="px-2 py-0.5 rounded-full bg-sky-500/20 hover:bg-sky-500/40 text-sky-300 font-bold border border-sky-500/30 flex items-center gap-1 transition-all active:scale-95"
+            title="Point camera directly to Moon"
           >
             <Moon size={12} />
-            <span>Moon</span>
+            <span>Find Moon</span>
+          </button>
+
+          <div className="h-3 w-[1px] bg-white/20 mx-0.5" />
+
+          {/* Quick Compass Cardinals */}
+          <button
+            type="button"
+            onClick={() => handleJumpToBearing(0)}
+            className="px-1.5 py-0.5 rounded hover:bg-white/10 text-slate-300 hover:text-white"
+          >
+            N
           </button>
           <button
             type="button"
-            onClick={() => setDisplayMode('both')}
-            className={`px-2.5 py-1 rounded-full transition-all ${
-              displayMode === 'both'
-                ? 'bg-brand-cyan text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            onClick={() => handleJumpToBearing(90)}
+            className="px-1.5 py-0.5 rounded hover:bg-white/10 text-slate-300 hover:text-white"
           >
-            Both
+            E
+          </button>
+          <button
+            type="button"
+            onClick={() => handleJumpToBearing(180)}
+            className="px-1.5 py-0.5 rounded hover:bg-white/10 text-slate-300 hover:text-white"
+          >
+            S
+          </button>
+          <button
+            type="button"
+            onClick={() => handleJumpToBearing(270)}
+            className="px-1.5 py-0.5 rounded hover:bg-white/10 text-slate-300 hover:text-white font-bold text-brand-cyan"
+          >
+            W
           </button>
         </div>
       </div>
@@ -866,8 +946,13 @@ export default function ArViewfinderModal({
         </div>
       )}
 
-      {/* Center Spacer to allow dragging view */}
-      <div className="flex-1" />
+      {/* Center Spacer: Full swipeable region with touch hint */}
+      <div className="flex-1 relative flex items-center justify-center">
+        {/* Subtle touch-to-drag guidance indicator on first load */}
+        <div className="absolute bottom-4 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full text-[11px] font-mono text-white/70 border border-white/10 pointer-events-none">
+          Swipe anywhere on screen to freely pan & tilt 360°
+        </div>
+      </div>
 
       {/* Visual Calibration Drawer (when open) */}
       {isCalibrating && (
@@ -923,7 +1008,7 @@ export default function ArViewfinderModal({
         </div>
       )}
 
-      {/* 5. INTERACTIVE TIME & DATE SCRUBBER BAR */}
+      {/* 6. INTERACTIVE TIME & DATE SCRUBBER BAR */}
       {showTimeControls && (
         <div className="relative z-20 bg-gradient-to-t from-black/95 via-black/85 to-black/30 backdrop-blur-md pt-3 pb-4 px-4 sm:px-6 border-t border-white/10 pointer-events-auto space-y-3">
           {/* Top Controls Row: Date Picker, Step Buttons & Play */}
@@ -994,17 +1079,16 @@ export default function ArViewfinderModal({
               </button>
             </div>
 
-            {/* Quick Live Ephemeris Telemetry */}
-            <div className="hidden sm:flex items-center gap-3 text-[11px] text-slate-400">
-              <div>
-                <span className="text-slate-500">SUN:</span>{' '}
-                <span className="text-amber-400 font-bold">{currentSunMoon.sun.altitude}°</span>
-              </div>
-              <div>
-                <span className="text-slate-500">MOON:</span>{' '}
-                <span className="text-sky-400 font-bold">{currentSunMoon.moon.altitude}°</span>
-              </div>
-            </div>
+            {/* Background Mode Toggle (Live Camera vs Reference Scene) */}
+            <button
+              type="button"
+              onClick={() => setBgSceneMode(prev => prev === 'camera' ? 'landscape' : 'camera')}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-300 text-[11px]"
+              title="Toggle Live Camera or Simulated Reference Scene"
+            >
+              {isShowingLiveCamera ? <Camera size={13} className="text-emerald-400" /> : <ImageIcon size={13} className="text-sky-400" />}
+              <span>{isShowingLiveCamera ? 'Camera Feed' : 'Photo Scene'}</span>
+            </button>
           </div>
 
           {/* Time Scrubber Slider (0 to 1440 minutes) */}
