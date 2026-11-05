@@ -278,6 +278,8 @@ export default function App() {
         onClose={() => setIsAROpen(false)}
         moonData={ephemData.moon}
         sunData={ephemData.sun}
+        userLocation={location}
+        initialDate={currentDate}
       />
     </div>
   );

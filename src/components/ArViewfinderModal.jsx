@@ -1,52 +1,156 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   X,
   Camera,
   Compass,
   Grid,
-  Crosshair,
-  AlertCircle,
-  Sparkles,
-  Orbit,
-  Moon,
   Sun,
+  Moon,
+  Clock,
+  Calendar,
+  Play,
+  Pause,
+  RotateCcw,
+  Sliders,
+  ChevronLeft,
+  ChevronRight,
   ShieldAlert,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  Check
 } from 'lucide-react';
+import SunCalc from 'suncalc';
+import { radToDeg, degToRad, getDailyCelestialPath, getMoonPhaseName } from '../services/ephemeris.js';
+
+// Cardinal & intercardinal compass markers
+const COMPASS_POINTS = [
+  { label: 'N', deg: 0 },
+  { label: '15°', deg: 15 },
+  { label: '30°', deg: 30 },
+  { label: 'NE', deg: 45 },
+  { label: '60°', deg: 60 },
+  { label: '75°', deg: 75 },
+  { label: 'E', deg: 90 },
+  { label: '105°', deg: 105 },
+  { label: '120°', deg: 120 },
+  { label: 'SE', deg: 135 },
+  { label: '150°', deg: 150 },
+  { label: '165°', deg: 165 },
+  { label: 'S', deg: 180 },
+  { label: '195°', deg: 195 },
+  { label: '210°', deg: 210 },
+  { label: 'SW', deg: 225 },
+  { label: '240°', deg: 240 },
+  { label: '247.5°', deg: 247.5, isSpecial: true },
+  { label: '255°', deg: 255 },
+  { label: 'W', deg: 270, isCardinal: true },
+  { label: '285°', deg: 285 },
+  { label: '300°', deg: 300 },
+  { label: 'NW', deg: 315 },
+  { label: '330°', deg: 330 },
+  { label: '345°', deg: 345 }
+];
+
+// Elevation steps: -20° up to +80° in 10-degree increments
+const ELEVATION_STEPS = [-20, -10, 0, 10, 20, 30, 40, 50, 60, 70, 80];
 
 export default function ArViewfinderModal({
   isOpen,
   onClose,
-  moonData = { altitudeDeg: 42, azimuthCompass: 185 },
-  sunData = { altitudeDeg: -15, azimuthCompass: 260 }
+  userLocation = { lat: 33.749, lng: -84.388 },
+  initialDate = new Date()
 }) {
   const videoRef = useRef(null);
+  const containerRef = useRef(null);
+
+  // Stream & Hardware Camera State
   const [stream, setStream] = useState(null);
   const [hasCamera, setHasCamera] = useState(false);
   const [cameraError, setCameraError] = useState(null);
-  const [isSecure, setIsSecure] = useState(true);
-  const [showGrid, setShowGrid] = useState(true);
-  const [arMode, setArMode] = useState('night'); // 'night' or 'day'
-  const [showStarTrails, setShowStarTrails] = useState(true);
-  const [orientation, setOrientation] = useState({ alpha: 180, beta: 30, gamma: 0 });
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
-  // Cross-browser getUserMedia helper with fallbacks
-  const getCameraStream = useCallback(async () => {
-    // Check secure context
-    const secure = typeof window !== 'undefined' ? (window.isSecureContext ?? window.location.protocol === 'https:') : true;
-    setIsSecure(secure);
+  // Dimensions
+  const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
 
-    // If insecure context, modern mobile browsers completely remove navigator.mediaDevices
+  // Orientation & Compass Calibration
+  // beta: 90 is upright vertical portrait looking at horizon
+  const [deviceOrientation, setDeviceOrientation] = useState({ alpha: 260, beta: 90, gamma: 0 });
+  const [calibrationOffset, setCalibrationOffset] = useState(0); // Manual visual compass calibration offset (-30 to +30 deg)
+  const [elevationOffset, setElevationOffset] = useState(0); // Manual pitch offset (-30 to +30 deg)
+  const [isCalibrating, setIsCalibrating] = useState(false);
+
+  // Manual Drag Pan/Tilt for desktop / testing
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, alpha: 260, beta: 90 });
+
+  // Date & Time Controls
+  const [selectedDate, setSelectedDate] = useState(() => new Date(initialDate));
+  const [minuteOfDay, setMinuteOfDay] = useState(() => {
+    const d = new Date(initialDate);
+    return d.getHours() * 60 + d.getMinutes();
+  });
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playTimerRef = useRef(null);
+
+  // Display toggles
+  const [displayMode, setDisplayMode] = useState('sun'); // 'sun', 'moon', 'both'
+  const [showGrid, setShowGrid] = useState(true);
+  const [showTimeControls, setShowTimeControls] = useState(true);
+
+  // Resize listener
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Sync selectedDate with minuteOfDay
+  const currentDateTime = useMemo(() => {
+    const d = new Date(selectedDate);
+    const hours = Math.floor(minuteOfDay / 60);
+    const mins = minuteOfDay % 60;
+    d.setHours(hours, mins, 0, 0);
+    return d;
+  }, [selectedDate, minuteOfDay]);
+
+  // Compute 24h Celestial Path (Sun, Moon, hourly markers)
+  const celestialData = useMemo(() => {
+    return getDailyCelestialPath(selectedDate, userLocation.lat, userLocation.lng);
+  }, [selectedDate, userLocation.lat, userLocation.lng]);
+
+  // Compute current Sun & Moon exact positions for currentDateTime
+  const currentSunMoon = useMemo(() => {
+    const sunPos = SunCalc.getPosition(currentDateTime, userLocation.lat, userLocation.lng);
+    const moonPos = SunCalc.getMoonPosition(currentDateTime, userLocation.lat, userLocation.lng);
+    const moonIllum = SunCalc.getMoonIllumination(currentDateTime);
+
+    return {
+      sun: {
+        altitude: Number(radToDeg(sunPos.altitude).toFixed(2)),
+        azimuth: Number(((radToDeg(sunPos.azimuth) + 180) % 360).toFixed(2))
+      },
+      moon: {
+        altitude: Number(radToDeg(moonPos.altitude).toFixed(2)),
+        azimuth: Number(((radToDeg(moonPos.azimuth) + 180) % 360).toFixed(2)),
+        phase: moonIllum.phase,
+        fraction: moonIllum.fraction,
+        phaseName: getMoonPhaseName(moonIllum.phase)
+      }
+    };
+  }, [currentDateTime, userLocation.lat, userLocation.lng]);
+
+  // Camera stream activation helper
+  const getCameraStream = useCallback(async () => {
+    const secure = typeof window !== 'undefined' ? (window.isSecureContext ?? window.location.protocol === 'https:') : true;
     if (!secure && window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       throw new Error('INSECURE_CONTEXT');
     }
 
-    // Try modern navigator.mediaDevices.getUserMedia
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       try {
-        // Preferred: rear environment camera
         return await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
@@ -55,53 +159,31 @@ export default function ArViewfinderModal({
           },
           audio: false
         });
-      } catch (err1) {
-        // Fallback: any available video camera
-        console.warn('Environment camera request failed, falling back to basic video:', err1);
-        return await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
+      } catch (err) {
+        return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
     }
 
-    // Legacy browser fallback
-    const legacyGetUserMedia =
-      navigator.getUserMedia ||
-      navigator.webkitGetUserMedia ||
-      navigator.mozGetUserMedia ||
-      navigator.msGetUserMedia;
-
-    if (legacyGetUserMedia) {
+    const legacy = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+    if (legacy) {
       return new Promise((resolve, reject) => {
-        legacyGetUserMedia.call(
-          navigator,
-          { video: { facingMode: 'environment' } },
-          resolve,
-          reject
-        );
+        legacy.call(navigator, { video: { facingMode: 'environment' } }, resolve, reject);
       });
     }
 
     throw new Error('CAMERA_API_UNAVAILABLE');
   }, []);
 
-  // Request camera and attach to video element
   const startCamera = useCallback(async () => {
     setIsRequestingPermission(true);
     setCameraError(null);
 
     try {
-      // iOS 13+ Device Orientation permission
-      if (
-        typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function'
-      ) {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
-          const perm = await DeviceOrientationEvent.requestPermission();
-          console.log('Device orientation permission:', perm);
-        } catch (orientErr) {
-          console.warn('Orientation permission prompt:', orientErr);
+          await DeviceOrientationEvent.requestPermission();
+        } catch (e) {
+          console.warn('Orientation prompt:', e);
         }
       }
 
@@ -117,42 +199,36 @@ export default function ArViewfinderModal({
         };
       }
     } catch (err) {
-      console.warn('Camera initialization error:', err);
       setHasCamera(false);
-
       if (err.message === 'INSECURE_CONTEXT') {
         setCameraError('INSECURE_CONTEXT');
-      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraError('Camera permission was denied in browser settings.');
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setCameraError('No physical camera device detected on this unit.');
       } else {
-        setCameraError('Camera unavailable in current browser mode. Using simulated HUD.');
+        setCameraError(err.message || 'Camera unavailable. Using visual simulation HUD.');
       }
     } finally {
       setIsRequestingPermission(false);
     }
   }, [getCameraStream]);
 
-  // Launch camera and orientation sensors when opened
+  // Handle opening / closing and deviceorientation
   useEffect(() => {
     if (!isOpen) {
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(t => t.stop());
         setStream(null);
       }
+      setIsPlaying(false);
       return;
     }
 
     startCamera();
 
-    // Device orientation for AR alignment
     const handleOrientation = (e) => {
       if (e.alpha !== null && e.alpha !== undefined) {
-        setOrientation({
-          alpha: Math.round(e.alpha || 0),
-          beta: Math.round(e.beta || 0),
-          gamma: Math.round(e.gamma || 0)
+        setDeviceOrientation({
+          alpha: e.alpha,
+          beta: e.beta ?? 90,
+          gamma: e.gamma ?? 0
         });
       }
     };
@@ -160,284 +236,840 @@ export default function ArViewfinderModal({
     window.addEventListener('deviceorientation', handleOrientation, true);
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-      }
+      if (stream) stream.getTracks().forEach(t => t.stop());
       window.removeEventListener('deviceorientation', handleOrientation);
     };
   }, [isOpen, startCamera]);
 
-  if (!isOpen) return null;
+  // Animation player for time movement
+  useEffect(() => {
+    if (isPlaying) {
+      playTimerRef.current = setInterval(() => {
+        setMinuteOfDay(prev => (prev + 3) % 1440);
+      }, 50);
+    } else if (playTimerRef.current) {
+      clearInterval(playTimerRef.current);
+    }
+    return () => {
+      if (playTimerRef.current) clearInterval(playTimerRef.current);
+    };
+  }, [isPlaying]);
 
-  // Handle switching to HTTPS
+  // Reset to "Now"
+  const handleResetToNow = () => {
+    const now = new Date();
+    setSelectedDate(now);
+    setMinuteOfDay(now.getHours() * 60 + now.getMinutes());
+    setIsPlaying(false);
+  };
+
+  // Switch to HTTPS if insecure
   const handleSwitchToHttps = () => {
     if (typeof window !== 'undefined') {
-      const secureUrl = `https://${window.location.hostname}:3000${window.location.pathname}${window.location.search}`;
-      window.location.href = secureUrl;
+      window.location.href = `https://${window.location.hostname}:3000${window.location.pathname}${window.location.search}`;
     }
   };
 
+  // Drag handlers for desktop / manual touch panning
+  const handleTouchOrMouseDown = (clientX, clientY) => {
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: clientX,
+      y: clientY,
+      alpha: deviceOrientation.alpha,
+      beta: deviceOrientation.beta
+    };
+  };
+
+  const handleTouchOrMouseMove = (clientX, clientY) => {
+    if (!isDragging) return;
+    const dx = clientX - dragStartRef.current.x;
+    const dy = clientY - dragStartRef.current.y;
+
+    // 1 pixel = ~0.2 degrees
+    const newAlpha = (dragStartRef.current.alpha - dx * 0.15 + 360) % 360;
+    const newBeta = Math.max(10, Math.min(170, dragStartRef.current.beta + dy * 0.15));
+
+    setDeviceOrientation(prev => ({
+      ...prev,
+      alpha: newAlpha,
+      beta: newBeta
+    }));
+  };
+
+  const handleTouchOrMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Effective Heading & Elevation
+  // Phone held in portrait upright: beta is 90 when pointing at horizon.
+  // Pitch angle relative to horizon: (beta - 90)
+  const currentHeading = (deviceOrientation.alpha + calibrationOffset + 360) % 360;
+  const currentPitch = (deviceOrientation.beta - 90) + elevationOffset;
+  const currentRoll = deviceOrientation.gamma || 0;
+
+  // AR Camera Projection Math
+  // Field of view: ~62° horizontal FoV
+  const hFoVDeg = 62;
+  const vFoVDeg = useMemo(() => {
+    return 2 * Math.atan(Math.tan(degToRad(hFoVDeg / 2)) * (dimensions.height / dimensions.width)) * (180 / Math.PI);
+  }, [dimensions.width, dimensions.height]);
+
+  const focalX = (dimensions.width / 2) / Math.tan(degToRad(hFoVDeg / 2));
+  const focalY = (dimensions.height / 2) / Math.tan(degToRad(vFoVDeg / 2));
+
+  // Projects spherical celestial coordinates (azimuth, altitude in degrees) into screen coordinates (x, y)
+  const projectToScreen = useCallback((azimuthDeg, altitudeDeg) => {
+    // Relative azimuth in [-180, 180]
+    let dAz = ((azimuthDeg - currentHeading + 540) % 360) - 180;
+    // Relative altitude
+    let dAlt = altitudeDeg - currentPitch;
+
+    // Check if point is behind the camera (outside 85 deg cone)
+    if (Math.abs(dAz) > 85 || Math.abs(dAlt) > 85) {
+      return null;
+    }
+
+    // Rectilinear perspective projection
+    let x = focalX * Math.tan(degToRad(dAz));
+    let y = -focalY * Math.tan(degToRad(dAlt));
+
+    // Apply roll rotation around screen center
+    const rollRad = degToRad(-currentRoll);
+    const cosR = Math.cos(rollRad);
+    const sinR = Math.sin(rollRad);
+
+    const rx = x * cosR - y * sinR;
+    const ry = x * sinR + y * cosR;
+
+    const screenX = dimensions.width / 2 + rx;
+    const screenY = dimensions.height / 2 + ry;
+
+    return {
+      x: screenX,
+      y: screenY,
+      dAz,
+      dAlt,
+      isVisible: screenX >= -80 && screenX <= dimensions.width + 80 && screenY >= -80 && screenY <= dimensions.height + 80
+    };
+  }, [currentHeading, currentPitch, currentRoll, focalX, focalY, dimensions.width, dimensions.height]);
+
+  // Generate SVG Path for an Elevation line (0°, 10°, 20°, etc.)
+  const getElevationPath = useCallback((elevDeg) => {
+    const points = [];
+    // Sample across the forward 100-degree azimuth cone around current heading
+    for (let offset = -48; offset <= 48; offset += 3) {
+      const az = (currentHeading + offset + 360) % 360;
+      const pt = projectToScreen(az, elevDeg);
+      if (pt) {
+        points.push(`${pt.x.toFixed(1)},${pt.y.toFixed(1)}`);
+      }
+    }
+    if (points.length < 2) return null;
+    return `M ${points.join(' L ')}`;
+  }, [currentHeading, projectToScreen]);
+
+  // Generate SVG Path for an Azimuthal line (vertical meridian)
+  const getAzimuthPath = useCallback((azDeg) => {
+    const points = [];
+    // Sample across vertical pitch cone: -30° to +80°
+    for (let alt = -30; alt <= 80; alt += 4) {
+      const pt = projectToScreen(azDeg, alt);
+      if (pt) {
+        points.push(`${pt.x.toFixed(1)},${pt.y.toFixed(1)}`);
+      }
+    }
+    if (points.length < 2) return null;
+    return `M ${points.join(' L ')}`;
+  }, [projectToScreen]);
+
+  // Project 24-hour Sun Path
+  const sunPathSvg = useMemo(() => {
+    if (displayMode === 'moon') return null;
+    const segments = [];
+    let currentSegment = [];
+
+    celestialData.sunPath.forEach(pt => {
+      const p = projectToScreen(pt.azimuth, pt.altitude);
+      if (p && p.isVisible) {
+        currentSegment.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+      } else {
+        if (currentSegment.length > 1) {
+          segments.push(`M ${currentSegment.join(' L ')}`);
+        }
+        currentSegment = [];
+      }
+    });
+    if (currentSegment.length > 1) {
+      segments.push(`M ${currentSegment.join(' L ')}`);
+    }
+    return segments.join(' ');
+  }, [celestialData.sunPath, projectToScreen, displayMode]);
+
+  // Project 24-hour Moon Path
+  const moonPathSvg = useMemo(() => {
+    if (displayMode === 'sun') return null;
+    const segments = [];
+    let currentSegment = [];
+
+    celestialData.moonPath.forEach(pt => {
+      const p = projectToScreen(pt.azimuth, pt.altitude);
+      if (p && p.isVisible) {
+        currentSegment.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+      } else {
+        if (currentSegment.length > 1) {
+          segments.push(`M ${currentSegment.join(' L ')}`);
+        }
+        currentSegment = [];
+      }
+    });
+    if (currentSegment.length > 1) {
+      segments.push(`M ${currentSegment.join(' L ')}`);
+    }
+    return segments.join(' ');
+  }, [celestialData.moonPath, projectToScreen, displayMode]);
+
+  // Project current Sun and Moon coordinates
+  const currentSunScreen = useMemo(() => {
+    if (displayMode === 'moon') return null;
+    return projectToScreen(currentSunMoon.sun.azimuth, currentSunMoon.sun.altitude);
+  }, [currentSunMoon.sun, projectToScreen, displayMode]);
+
+  const currentMoonScreen = useMemo(() => {
+    if (displayMode === 'sun') return null;
+    return projectToScreen(currentSunMoon.moon.azimuth, currentSunMoon.moon.altitude);
+  }, [currentSunMoon.moon, projectToScreen, displayMode]);
+
+  // Formatted date string for top-left header: e.g. "4/17/18, 6:51 PM"
+  const formattedHeaderDateTime = useMemo(() => {
+    const m = currentDateTime.getMonth() + 1;
+    const d = currentDateTime.getDate();
+    const y = String(currentDateTime.getFullYear()).slice(-2);
+    const timeStr = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }).format(currentDateTime);
+
+    return `${m}/${d}/${y}, ${timeStr}`;
+  }, [currentDateTime]);
+
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black overflow-hidden select-none">
-      {/* Background Camera Video Stream or Night Sky Simulation */}
+    <div
+      ref={containerRef}
+      className="fixed inset-0 z-50 flex flex-col bg-black overflow-hidden select-none touch-none"
+      onMouseDown={(e) => handleTouchOrMouseDown(e.clientX, e.clientY)}
+      onMouseMove={(e) => handleTouchOrMouseMove(e.clientX, e.clientY)}
+      onMouseUp={handleTouchOrMouseUp}
+      onTouchStart={(e) => {
+        if (e.touches.length === 1) {
+          handleTouchOrMouseDown(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }}
+      onTouchMove={(e) => {
+        if (e.touches.length === 1) {
+          handleTouchOrMouseMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }}
+      onTouchEnd={handleTouchOrMouseUp}
+    >
+      {/* 1. Camera Video Feed OR Photographic Realistic Sky/Landscape Simulator */}
       {hasCamera && stream ? (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         />
       ) : (
-        <div className="absolute inset-0 bg-[#080d16] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(18,214,199,0.15),rgba(255,255,255,0))] flex items-center justify-center">
-          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(#12d6c7_1px,transparent_1px)] [background-size:24px_24px]" />
+        <div className="absolute inset-0 bg-[#070c14] pointer-events-none overflow-hidden">
+          {/* Realistic Sky Gradient (Day / Twilight / Night depending on Sun altitude) */}
+          <div
+            className="absolute inset-0 transition-colors duration-700"
+            style={{
+              background: currentSunMoon.sun.altitude > 0
+                ? 'linear-gradient(to bottom, #1e3a8a 0%, #3b82f6 40%, #93c5fd 75%, #dbeafe 100%)'
+                : currentSunMoon.sun.altitude > -6
+                ? 'linear-gradient(to bottom, #0f172a 0%, #1e1b4b 30%, #7c2d12 65%, #f97316 100%)'
+                : 'linear-gradient(to bottom, #020617 0%, #0b0f19 50%, #111827 100%)'
+            }}
+          />
+          {/* Subtle star field at night */}
+          {currentSunMoon.sun.altitude < -6 && (
+            <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:32px_32px]" />
+          )}
+          {/* Distant horizon silhouette */}
+          <div className="absolute bottom-0 inset-x-0 h-1/4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
         </div>
       )}
 
-      {/* AR Viewfinder HUD Elements */}
-      <div className="absolute inset-0 pointer-events-none p-4 sm:p-6 flex flex-col justify-between">
-        {/* Top Status Bar */}
-        <div className="flex items-center justify-between pointer-events-auto flex-wrap gap-2">
-          <div className="flex items-center gap-2 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-xs font-mono">
-            <span className={`w-2 h-2 rounded-full ${hasCamera ? 'bg-emerald-400 animate-pulse' : 'bg-brand-amber animate-pulse'}`} />
-            <span className="text-white font-semibold">
-              {hasCamera ? 'AR LIVE CAMERA' : 'AR SENSOR SIMULATION'}
-            </span>
-            <span className="text-slate-400">|</span>
-            <span className="text-brand-cyan">AZ {orientation.alpha}°</span>
-            <span className="text-slate-400">|</span>
-            <span className="text-brand-amber">ALT {orientation.beta}°</span>
-          </div>
+      {/* 2. Fullscreen SVG Overlay for Celestial Paths, Horizon & Elevation Grid */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
+      >
+        <defs>
+          {/* Sun disc glow filters */}
+          <filter id="sun-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <radialGradient id="sun-gradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#FFFBEB" />
+            <stop offset="40%" stopColor="#FBBF24" />
+            <stop offset="85%" stopColor="#F59E0B" />
+            <stop offset="100%" stopColor="#D97706" stopOpacity="0.85" />
+          </radialGradient>
 
-          <div className="flex items-center gap-2">
-            {/* Mode Toggle: Night AR vs Solar AR */}
-            <div className="flex bg-black/70 backdrop-blur-md rounded-full p-0.5 border border-white/10 text-xs font-mono">
+          {/* Moon disc gradient */}
+          <radialGradient id="moon-gradient" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stopColor="#FFFFFF" />
+            <stop offset="60%" stopColor="#E2E8F0" />
+            <stop offset="100%" stopColor="#94A3B8" />
+          </radialGradient>
+        </defs>
+
+        {/* --- GRID SYSTEM: ELEVATION & AZIMUTH --- */}
+        {showGrid && (
+          <g className="grid-layer">
+            {/* Azimuthal (Vertical) Meridian Lines */}
+            {COMPASS_POINTS.map((cp, idx) => {
+              const path = getAzimuthPath(cp.deg);
+              if (!path) return null;
+              const isMajor = cp.deg % 45 === 0;
+              return (
+                <path
+                  key={`az-line-${idx}`}
+                  d={path}
+                  stroke={isMajor ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.22)'}
+                  strokeWidth={isMajor ? '1.5' : '1'}
+                  strokeDasharray={isMajor ? undefined : '4 4'}
+                  fill="none"
+                />
+              );
+            })}
+
+            {/* Elevation (Horizontal) Arcs (10-degree steps) */}
+            {ELEVATION_STEPS.map((elev) => {
+              const path = getElevationPath(elev);
+              if (!path) return null;
+              const isHorizon = elev === 0;
+
+              return (
+                <g key={`elev-group-${elev}`}>
+                  <path
+                    d={path}
+                    stroke={isHorizon ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.35)'}
+                    strokeWidth={isHorizon ? '2.5' : '1.2'}
+                    fill="none"
+                  />
+                  {/* Elevation Label Pill (e.g., "10.0°") */}
+                  {!isHorizon && elev > 0 && (() => {
+                    const labelPt = projectToScreen((currentHeading + 10) % 360, elev);
+                    if (!labelPt || !labelPt.isVisible) return null;
+                    return (
+                      <g transform={`translate(${labelPt.x}, ${labelPt.y})`}>
+                        <circle r="16" fill="rgba(255, 255, 255, 0.22)" stroke="rgba(255, 255, 255, 0.45)" strokeWidth="1" />
+                        <text
+                          y="4"
+                          textAnchor="middle"
+                          fill="#FFFFFF"
+                          fontSize="11"
+                          fontFamily="monospace"
+                          fontWeight="600"
+                        >
+                          {elev.toFixed(1)}°
+                        </text>
+                      </g>
+                    );
+                  })()}
+                </g>
+              );
+            })}
+
+            {/* Compass Badges on the Horizon Line (e.g. [W], [247.5°], [SW]) */}
+            {COMPASS_POINTS.map((cp, idx) => {
+              const pt = projectToScreen(cp.deg, 0);
+              if (!pt || !pt.isVisible) return null;
+
+              const isCardinal = cp.isCardinal || cp.label === 'W' || cp.label === 'E' || cp.label === 'N' || cp.label === 'S';
+              const isSpecial = cp.isSpecial || cp.label === '247.5°';
+
+              if (!isCardinal && !isSpecial && cp.deg % 45 !== 0) return null;
+
+              return (
+                <g key={`compass-badge-${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
+                  {/* Frosted circular badge as in PhotoPills reference photo */}
+                  <circle
+                    r={isCardinal ? 26 : 22}
+                    fill="rgba(255, 255, 255, 0.32)"
+                    stroke="rgba(255, 255, 255, 0.65)"
+                    strokeWidth="1.5"
+                    style={{ backdropFilter: 'blur(4px)' }}
+                  />
+                  <text
+                    y={isCardinal ? 6 : 4}
+                    textAnchor="middle"
+                    fill="#FFFFFF"
+                    fontSize={isCardinal ? '18' : '10'}
+                    fontWeight={isCardinal ? '800' : '600'}
+                    fontFamily="monospace"
+                  >
+                    {cp.label}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        )}
+
+        {/* --- SUN PATH TRAJECTORY ARC --- */}
+        {sunPathSvg && (
+          <g className="sun-path-layer">
+            <path
+              d={sunPathSvg}
+              stroke="#F59E0B"
+              strokeWidth="3.5"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="drop-shadow(0 0 6px rgba(245, 158, 11, 0.6))"
+            />
+
+            {/* Hourly Markers & Time Labels along Sun Path */}
+            {celestialData.hourlyMarkers.map((marker, idx) => {
+              const pt = projectToScreen(marker.sun.azimuth, marker.sun.altitude);
+              if (!pt || !pt.isVisible) return null;
+
+              return (
+                <g key={`sun-hour-${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
+                  {/* Trajectory dot */}
+                  <circle r="5" fill="#FBBF24" stroke="#78350F" strokeWidth="1.5" />
+                  {/* Time label text (e.g. "6:00 PM", "7:00 PM") */}
+                  <text
+                    x="10"
+                    y="-8"
+                    fill="#FDE68A"
+                    fontSize="13"
+                    fontFamily="sans-serif"
+                    fontWeight="700"
+                    stroke="#451A03"
+                    strokeWidth="0.75"
+                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.8))"
+                  >
+                    {marker.timeLabel}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        )}
+
+        {/* --- MOON PATH TRAJECTORY ARC --- */}
+        {moonPathSvg && (
+          <g className="moon-path-layer">
+            <path
+              d={moonPathSvg}
+              stroke="#38BDF8"
+              strokeWidth="3"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="drop-shadow(0 0 6px rgba(56, 189, 248, 0.6))"
+            />
+
+            {/* Hourly Markers along Moon Path */}
+            {celestialData.hourlyMarkers.map((marker, idx) => {
+              const pt = projectToScreen(marker.moon.azimuth, marker.moon.altitude);
+              if (!pt || !pt.isVisible) return null;
+
+              return (
+                <g key={`moon-hour-${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
+                  <circle r="4.5" fill="#38BDF8" stroke="#0C4A6E" strokeWidth="1.5" />
+                  <text
+                    x="10"
+                    y="-8"
+                    fill="#BAE6FD"
+                    fontSize="12"
+                    fontFamily="sans-serif"
+                    fontWeight="700"
+                    stroke="#082F49"
+                    strokeWidth="0.75"
+                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.8))"
+                  >
+                    {marker.timeLabel}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        )}
+
+        {/* --- ACTIVE SUN DISC (Selected Date & Time) --- */}
+        {currentSunScreen && currentSunScreen.isVisible && (
+          <g transform={`translate(${currentSunScreen.x}, ${currentSunScreen.y})`}>
+            {/* Outer Corona */}
+            <circle r="46" fill="#F59E0B" opacity="0.25" filter="url(#sun-glow)" />
+            <circle r="36" fill="#FBBF24" opacity="0.45" />
+            {/* Bright Sun Core */}
+            <circle r="26" fill="url(#sun-gradient)" stroke="#FFFBEB" strokeWidth="2" />
+            {/* Center pinpoint */}
+            <circle r="2" fill="#FFFFFF" />
+            {/* Time label badge beside Sun */}
+            <text
+              x="36"
+              y="6"
+              fill="#FEF08A"
+              fontSize="16"
+              fontWeight="800"
+              fontFamily="sans-serif"
+              filter="drop-shadow(0 2px 6px rgba(0,0,0,0.9))"
+            >
+              {new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(currentDateTime)}
+            </text>
+          </g>
+        )}
+
+        {/* --- ACTIVE MOON DISC (Selected Date & Time) --- */}
+        {currentMoonScreen && currentMoonScreen.isVisible && (
+          <g transform={`translate(${currentMoonScreen.x}, ${currentMoonScreen.y})`}>
+            <circle r="32" fill="#38BDF8" opacity="0.25" filter="url(#sun-glow)" />
+            <circle r="22" fill="url(#moon-gradient)" stroke="#E2E8F0" strokeWidth="1.5" />
+            {/* Terminator shadow depending on lunar phase */}
+            <path
+              d="M 0 -22 A 22 22 0 0 1 0 22 A 16 22 0 0 0 0 -22 Z"
+              fill="#0F172A"
+              opacity="0.65"
+            />
+            <text
+              x="30"
+              y="5"
+              fill="#E0F2FE"
+              fontSize="14"
+              fontWeight="700"
+              fontFamily="sans-serif"
+              filter="drop-shadow(0 2px 6px rgba(0,0,0,0.9))"
+            >
+              {currentSunMoon.moon.phaseName}
+            </text>
+          </g>
+        )}
+      </svg>
+
+      {/* 3. TOP APP BAR (Styled exactly like PhotoPills Reference Photo) */}
+      <div className="relative z-20 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/85 via-black/50 to-transparent pointer-events-auto">
+        {/* Left: "Now" button */}
+        <button
+          type="button"
+          onClick={handleResetToNow}
+          className="text-cyan-400 hover:text-cyan-300 font-semibold text-base sm:text-lg transition-colors px-2 py-1 rounded-lg active:scale-95"
+        >
+          Now
+        </button>
+
+        {/* Center: "Augmented Reality" Title */}
+        <h1 className="text-white font-bold text-base sm:text-lg tracking-tight">
+          Augmented Reality
+        </h1>
+
+        {/* Right: "Done" button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-cyan-400 hover:text-cyan-300 font-semibold text-base sm:text-lg transition-colors px-2 py-1 rounded-lg active:scale-95"
+        >
+          Done
+        </button>
+      </div>
+
+      {/* 4. DATE & TIME STAMP (Top-left below header as in photo: "4/17/18, 6:51 PM") */}
+      <div className="relative z-20 px-5 pointer-events-none flex justify-between items-start">
+        <div className="text-white/90 font-mono text-sm sm:text-base font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+          {formattedHeaderDateTime}
+        </div>
+
+        {/* Quick Mode Pill: Sun / Moon / Both */}
+        <div className="pointer-events-auto flex items-center bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/15 text-xs font-mono">
+          <button
+            type="button"
+            onClick={() => setDisplayMode('sun')}
+            className={`px-2.5 py-1 rounded-full transition-all flex items-center gap-1 ${
+              displayMode === 'sun'
+                ? 'bg-amber-500 text-slate-950 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sun size={12} />
+            <span>Sun</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDisplayMode('moon')}
+            className={`px-2.5 py-1 rounded-full transition-all flex items-center gap-1 ${
+              displayMode === 'moon'
+                ? 'bg-sky-400 text-slate-950 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Moon size={12} />
+            <span>Moon</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDisplayMode('both')}
+            className={`px-2.5 py-1 rounded-full transition-all ${
+              displayMode === 'both'
+                ? 'bg-brand-cyan text-slate-950 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Both
+          </button>
+        </div>
+      </div>
+
+      {/* Insecure Context Banner if accessed via HTTP on phone */}
+      {cameraError === 'INSECURE_CONTEXT' && (
+        <div className="absolute top-20 inset-x-4 z-30 mx-auto max-w-md bg-slate-900/95 border border-brand-amber/60 rounded-2xl p-4 shadow-2xl backdrop-blur-xl text-center space-y-2.5 pointer-events-auto">
+          <div className="w-10 h-10 mx-auto rounded-full bg-brand-amber/15 text-brand-amber flex items-center justify-center">
+            <ShieldAlert size={22} />
+          </div>
+          <div>
+            <h3 className="text-white font-bold text-sm">Switch to HTTPS for Camera</h3>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Mobile browsers require HTTPS to unlock live camera video.
+            </p>
+          </div>
+          <div className="flex gap-2 justify-center pt-1">
+            <button
+              type="button"
+              onClick={handleSwitchToHttps}
+              className="px-3.5 py-2 rounded-xl bg-brand-cyan hover:bg-brand-cyanHover text-slate-950 font-bold text-xs flex items-center gap-1.5"
+            >
+              <ExternalLink size={13} />
+              <span>Switch to HTTPS</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCameraError(null)}
+              className="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs"
+            >
+              Use Simulator
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Center Spacer to allow dragging view */}
+      <div className="flex-1" />
+
+      {/* Visual Calibration Drawer (when open) */}
+      {isCalibrating && (
+        <div className="relative z-30 mx-4 mb-3 bg-black/85 backdrop-blur-xl border border-white/20 rounded-2xl p-4 text-xs font-mono pointer-events-auto max-w-lg self-center w-full">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+            <span className="text-white font-bold flex items-center gap-1.5">
+              <Compass size={14} className="text-brand-cyan" />
+              <span>Visual Compass Calibration</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsCalibrating(false)}
+              className="p-1 rounded text-slate-400 hover:text-white"
+            >
+              <Check size={16} />
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-400 mb-3">
+            Align the compass with landmarks or your phone’s orientation if local magnetic interference occurs.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-slate-300 mb-1">
+                <span>Azimuth Offset:</span>
+                <span className="text-brand-cyan font-bold">{calibrationOffset > 0 ? `+${calibrationOffset}` : calibrationOffset}°</span>
+              </div>
+              <input
+                type="range"
+                min="-45"
+                max="45"
+                step="1"
+                value={calibrationOffset}
+                onChange={(e) => setCalibrationOffset(Number(e.target.value))}
+                className="w-full accent-brand-cyan cursor-pointer"
+              />
+            </div>
+            <div>
+              <div className="flex justify-between text-slate-300 mb-1">
+                <span>Pitch / Elevation Offset:</span>
+                <span className="text-brand-amber font-bold">{elevationOffset > 0 ? `+${elevationOffset}` : elevationOffset}°</span>
+              </div>
+              <input
+                type="range"
+                min="-30"
+                max="30"
+                step="1"
+                value={elevationOffset}
+                onChange={(e) => setElevationOffset(Number(e.target.value))}
+                className="w-full accent-brand-amber cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. INTERACTIVE TIME & DATE SCRUBBER BAR */}
+      {showTimeControls && (
+        <div className="relative z-20 bg-gradient-to-t from-black/95 via-black/85 to-black/30 backdrop-blur-md pt-3 pb-4 px-4 sm:px-6 border-t border-white/10 pointer-events-auto space-y-3">
+          {/* Top Controls Row: Date Picker, Step Buttons & Play */}
+          <div className="flex items-center justify-between gap-2 text-xs font-mono">
+            {/* Date Switcher */}
+            <div className="flex items-center gap-1 bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-white/10">
+              <Calendar size={13} className="text-brand-cyan" />
+              <input
+                type="date"
+                value={selectedDate.toISOString().split('T')[0]}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const [y, m, d] = e.target.value.split('-').map(Number);
+                    setSelectedDate(new Date(y, m - 1, d));
+                  }
+                }}
+                className="bg-transparent text-white font-mono text-xs focus:outline-none cursor-pointer"
+              />
+            </div>
+
+            {/* Step Time Buttons & Play/Pause */}
+            <div className="flex items-center gap-1 sm:gap-1.5">
               <button
                 type="button"
-                onClick={() => setArMode('night')}
-                className={`px-3 py-1 rounded-full transition-all flex items-center gap-1 ${
-                  arMode === 'night'
-                    ? 'bg-brand-cyan text-slate-950 font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={() => setMinuteOfDay(prev => (prev - 60 + 1440) % 1440)}
+                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[11px] active:scale-95"
+                title="-1 Hour"
               >
-                <Sparkles size={12} />
-                <span>Night AR</span>
+                -1h
               </button>
               <button
                 type="button"
-                onClick={() => setArMode('day')}
-                className={`px-3 py-1 rounded-full transition-all flex items-center gap-1 ${
-                  arMode === 'day'
-                    ? 'bg-brand-amber text-slate-950 font-bold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={() => setMinuteOfDay(prev => (prev - 10 + 1440) % 1440)}
+                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[11px] active:scale-95"
+                title="-10 Minutes"
               >
-                <Sun size={12} />
-                <span>Sun/Moon</span>
+                -10m
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsPlaying(!isPlaying)}
+                className={`p-2 rounded-xl transition-all shadow-lg active:scale-95 ${
+                  isPlaying
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(245,158,11,0.5)]'
+                    : 'bg-brand-cyan text-slate-950 font-bold shadow-[0_0_12px_rgba(18,214,199,0.4)]'
+                }`}
+                title={isPlaying ? 'Pause Motion' : 'Play Celestial Motion'}
+              >
+                {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMinuteOfDay(prev => (prev + 10) % 1440)}
+                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[11px] active:scale-95"
+                title="+10 Minutes"
+              >
+                +10m
+              </button>
+              <button
+                type="button"
+                onClick={() => setMinuteOfDay(prev => (prev + 60) % 1440)}
+                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[11px] active:scale-95"
+                title="+1 Hour"
+              >
+                +1h
               </button>
             </div>
 
-            {arMode === 'night' && (
-              <button
-                type="button"
-                onClick={() => setShowStarTrails(!showStarTrails)}
-                className={`p-2 rounded-full border transition-all pointer-events-auto ${
-                  showStarTrails
-                    ? 'bg-brand-amber/20 text-brand-amber border-brand-amber/40'
-                    : 'bg-black/70 text-slate-400 border-white/10'
-                }`}
-                title="Toggle Star Trails Arc Pattern"
-              >
-                <Orbit size={18} />
-              </button>
-            )}
+            {/* Quick Live Ephemeris Telemetry */}
+            <div className="hidden sm:flex items-center gap-3 text-[11px] text-slate-400">
+              <div>
+                <span className="text-slate-500">SUN:</span>{' '}
+                <span className="text-amber-400 font-bold">{currentSunMoon.sun.altitude}°</span>
+              </div>
+              <div>
+                <span className="text-slate-500">MOON:</span>{' '}
+                <span className="text-sky-400 font-bold">{currentSunMoon.moon.altitude}°</span>
+              </div>
+            </div>
+          </div>
 
+          {/* Time Scrubber Slider (0 to 1440 minutes) */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+              <span>12:00 AM</span>
+              <span className="text-white font-bold bg-slate-800/90 px-2 py-0.5 rounded border border-white/10">
+                {new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(currentDateTime)}
+              </span>
+              <span>11:59 PM</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1439"
+              value={minuteOfDay}
+              onChange={(e) => {
+                setMinuteOfDay(Number(e.target.value));
+                if (isPlaying) setIsPlaying(false);
+              }}
+              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
+            />
+          </div>
+
+          {/* Bottom Action Bar: Visual Calibration, Grid Toggle, Telemetry */}
+          <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[11px] font-mono">
+            {/* Visual Calibration Trigger (PhotoPills style) */}
+            <button
+              type="button"
+              onClick={() => setIsCalibrating(!isCalibrating)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all ${
+                isCalibrating
+                  ? 'bg-brand-cyan/20 border-brand-cyan text-brand-cyan'
+                  : 'bg-slate-900/60 border-white/10 text-slate-400 hover:text-white'
+              }`}
+            >
+              <Compass size={13} />
+              <span>Visual calibration</span>
+            </button>
+
+            {/* Grid Toggle */}
             <button
               type="button"
               onClick={() => setShowGrid(!showGrid)}
-              className="p-2 rounded-full bg-black/70 backdrop-blur-md text-slate-300 hover:text-white border border-white/10 transition-all pointer-events-auto"
-              title="Toggle Grid"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-all ${
+                showGrid
+                  ? 'bg-slate-800 border-white/20 text-white'
+                  : 'bg-slate-900/60 border-white/10 text-slate-500'
+              }`}
             >
-              <Grid size={18} />
+              <Grid size={13} />
+              <span>Grid ({showGrid ? 'On' : 'Off'})</span>
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-full bg-black/80 backdrop-blur-md text-white hover:bg-slate-800 border border-white/20 transition-all pointer-events-auto"
-              title="Exit AR Viewfinder"
-            >
-              <X size={20} />
-            </button>
+
+            {/* Telemetry Indicator */}
+            <div className="text-slate-400 hidden xs:block">
+              <span>AZ: </span>
+              <span className="text-brand-cyan font-bold">{Math.round(currentHeading)}°</span>
+              <span className="mx-1.5 text-slate-600">|</span>
+              <span>ALT: </span>
+              <span className="text-brand-amber font-bold">{Math.round(currentPitch)}°</span>
+            </div>
           </div>
         </div>
-
-        {/* Center Reticle, Guidance & Prompts */}
-        <div className="relative flex-1 flex items-center justify-center overflow-hidden">
-          {/* Insecure Context Banner (HTTP on Mobile) */}
-          {cameraError === 'INSECURE_CONTEXT' && (
-            <div className="pointer-events-auto z-20 max-w-md mx-4 bg-slate-900/95 border border-brand-amber/50 rounded-2xl p-5 shadow-2xl backdrop-blur-xl text-center space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-full bg-brand-amber/15 text-brand-amber flex items-center justify-center">
-                <ShieldAlert size={28} />
-              </div>
-              <div>
-                <h3 className="text-white font-bold text-base">HTTPS Required for Camera</h3>
-                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                  Mobile browsers (iOS Safari & Chrome) block camera hardware when accessed via unencrypted <code className="text-brand-amber">http://</code> on local networks.
-                </p>
-              </div>
-
-              <div className="pt-2 flex flex-col sm:flex-row gap-2">
-                <button
-                  type="button"
-                  onClick={handleSwitchToHttps}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-brand-cyan hover:bg-brand-cyanHover text-slate-950 font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(18,214,199,0.3)]"
-                >
-                  <ExternalLink size={14} />
-                  <span>Switch to HTTPS (Secure)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCameraError(null)}
-                  className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-all font-mono"
-                >
-                  Continue with Simulation
-                </button>
-              </div>
-              <p className="text-[10px] text-slate-400 font-mono">
-                Note: Tap "Advanced" &rarr; "Proceed" if your phone asks about the self-signed certificate.
-              </p>
-            </div>
-          )}
-
-          {/* Retry / Enable Camera Overlay if camera is not active and no insecure context */}
-          {!hasCamera && !cameraError && (
-            <div className="pointer-events-auto z-10 flex flex-col items-center gap-2">
-              <button
-                type="button"
-                onClick={startCamera}
-                disabled={isRequestingPermission}
-                className="py-2.5 px-4 rounded-xl bg-brand-cyan hover:bg-brand-cyanHover text-slate-950 font-semibold text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(18,214,199,0.3)] transition-all active:scale-95"
-              >
-                {isRequestingPermission ? (
-                  <RefreshCw size={14} className="animate-spin" />
-                ) : (
-                  <Camera size={14} />
-                )}
-                <span>{isRequestingPermission ? 'Connecting...' : 'Tap to Enable Camera Stream'}</span>
-              </button>
-            </div>
-          )}
-
-          {/* Rule of Thirds Grid */}
-          {showGrid && (
-            <div className="absolute inset-8 sm:inset-16 grid grid-cols-3 grid-rows-3 border border-white/10 pointer-events-none">
-              <div className="border-r border-b border-white/10" />
-              <div className="border-r border-b border-white/10" />
-              <div className="border-b border-white/10" />
-              <div className="border-r border-b border-white/10" />
-              <div className="border-r border-b border-white/10" />
-              <div className="border-b border-white/10" />
-              <div className="border-r border-b border-white/10" />
-              <div className="border-r border-b border-white/10" />
-              <div />
-            </div>
-          )}
-
-          {/* Night AR: Concentric Star Trails Pattern (Centered on Polaris / Celestial Pole) */}
-          {arMode === 'night' && showStarTrails && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-              <div className="w-[180px] h-[180px] border border-dashed border-cyan-400 rounded-full" />
-              <div className="absolute w-[280px] h-[280px] border border-dashed border-cyan-400 rounded-full" />
-              <div className="absolute w-[400px] h-[400px] border border-dashed border-cyan-400 rounded-full" />
-              <div className="absolute w-[560px] h-[560px] border border-dashed border-cyan-400 rounded-full" />
-              {/* Polaris Indicator */}
-              <div className="absolute top-1/3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/80 px-2 py-0.5 rounded border border-cyan-400/50 text-[10px] font-mono text-cyan-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                <span>POLARIS (North Celestial Pole)</span>
-              </div>
-            </div>
-          )}
-
-          {/* Night AR: Milky Way Arch Overlay */}
-          {arMode === 'night' && (
-            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none flex flex-col items-center">
-              <div className="w-full h-24 bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent blur-xl transform -rotate-25" />
-              <div className="absolute right-1/4 top-1/4 flex flex-col items-center">
-                <div className="w-10 h-10 border border-brand-cyan/70 rounded-full flex items-center justify-center animate-pulse">
-                  <div className="w-2 h-2 rounded-full bg-brand-cyan" />
-                </div>
-                <span className="mt-1 bg-black/80 px-2 py-0.5 rounded border border-brand-cyan/40 text-[9px] font-mono text-brand-cyan font-bold">
-                  GALACTIC CENTER (MILKY WAY CORE)
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Optical Crosshairs */}
-          <div className="relative w-40 h-40 flex items-center justify-center pointer-events-none">
-            <div className="absolute w-full h-[1px] bg-brand-cyan/40" />
-            <div className="absolute h-full w-[1px] bg-brand-cyan/40" />
-            <div className="w-16 h-16 border border-brand-cyan/60 rounded-full flex items-center justify-center">
-              <div className="w-2 h-2 bg-brand-cyan rounded-full animate-ping" />
-            </div>
-          </div>
-
-          {/* Lunar Target Vector Overlay */}
-          <div className="absolute top-1/4 right-1/4 flex flex-col items-center pointer-events-none">
-            <div className="w-12 h-12 border-2 border-brand-amber rounded-lg animate-pulse flex items-center justify-center shadow-[0_0_15px_rgba(252,163,17,0.5)]">
-              <div className="w-3 h-3 bg-brand-amber rounded-full" />
-            </div>
-            <div className="mt-1 bg-black/80 px-2 py-0.5 rounded border border-brand-amber/40 text-[10px] font-mono text-brand-amber font-semibold whitespace-nowrap">
-              TARGET LOCK: MOON ({moonData.altitudeDeg}° ALT)
-            </div>
-          </div>
-
-          {/* Spirit Level (Roll Indicator) */}
-          <div 
-            className="absolute w-36 h-[2px] bg-white/70 transition-transform duration-100 pointer-events-none"
-            style={{ transform: `rotate(${orientation.gamma}deg)` }}
-          >
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-brand-cyan shadow-[0_0_8px_#12d6c7]" />
-          </div>
-        </div>
-
-        {/* Bottom Telemetry Bar */}
-        <div className="bg-black/75 backdrop-blur-md rounded-xl p-3 border border-white/10 flex flex-wrap items-center justify-between text-xs font-mono text-slate-300 pointer-events-auto gap-2">
-          <div className="flex items-center gap-4">
-            <div>
-              <span className="text-slate-500">PITCH: </span>
-              <span className="text-white font-bold">{orientation.beta}°</span>
-            </div>
-            <div>
-              <span className="text-slate-500">ROLL: </span>
-              <span className="text-white font-bold">{orientation.gamma}°</span>
-            </div>
-            <div>
-              <span className="text-slate-500">HEADING: </span>
-              <span className="text-brand-cyan font-bold">{orientation.alpha}° N</span>
-            </div>
-          </div>
-
-          {cameraError && cameraError !== 'INSECURE_CONTEXT' && (
-            <div className="flex items-center gap-1.5 text-amber-400 text-[11px]">
-              <AlertCircle size={13} />
-              <span>{cameraError}</span>
-            </div>
-          )}
-
-          {!hasCamera && (
-            <button
-              type="button"
-              onClick={startCamera}
-              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-brand-cyan flex items-center gap-1 border border-white/10"
-            >
-              <RefreshCw size={11} />
-              <span>Retry Camera</span>
-            </button>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
