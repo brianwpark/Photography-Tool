@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { SENSOR_PRESETS } from '../services/opticalCalc.js';
-import { Ruler, Focus, Maximize2, ChevronRight } from 'lucide-react';
+import { Ruler, Focus, Maximize2, ChevronRight, Check } from 'lucide-react';
 
 export default function SubjectDistanceView({ onSelectView }) {
   const [objectDimensionMeters, setObjectDimensionMeters] = useState(1.8); // 1.8m height
@@ -20,6 +20,17 @@ export default function SubjectDistanceView({ onSelectView }) {
     return Number((distanceMm / 1000).toFixed(2));
   }, [objectDimensionMeters, focalLength, sensor, frameCoveragePercent]);
 
+  // Navigate to DoF Calculator and transfer the calculated distance, focal length, and sensor
+  const handleApplyToDof = () => {
+    if (onSelectView) {
+      onSelectView('dof', 'calc', {
+        distance,
+        focalLength,
+        sensorId
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -38,13 +49,16 @@ export default function SubjectDistanceView({ onSelectView }) {
           </p>
         </div>
 
+        {/* Apply to DoF Calculator Header Button */}
         <button
-          onClick={() => onSelectView('dof')}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-300 border border-white/10 self-start sm:self-auto"
+          type="button"
+          onClick={handleApplyToDof}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-cyan/15 hover:bg-brand-cyan/25 text-xs font-mono text-brand-cyan font-bold border border-brand-cyan/40 self-start sm:self-auto transition-all shadow-[0_0_12px_rgba(18,214,199,0.2)] active:scale-95"
+          title="Transfer distance and focal length directly to DoF Calculator"
         >
-          <Focus size={14} className="text-brand-cyan" />
+          <Focus size={15} />
           <span>Apply to DoF Calculator</span>
-          <ChevronRight size={13} />
+          <ChevronRight size={14} />
         </button>
       </div>
 
@@ -79,6 +93,7 @@ export default function SubjectDistanceView({ onSelectView }) {
               ].map(item => (
                 <button
                   key={item.label}
+                  type="button"
                   onClick={() => setObjectDimensionMeters(item.val)}
                   className={`px-2.5 py-1 rounded text-xs font-mono transition-all ${
                     objectDimensionMeters === item.val
@@ -164,6 +179,17 @@ export default function SubjectDistanceView({ onSelectView }) {
             <p className="text-xs text-slate-400 font-mono">
               Stand {distance}m away to frame a {objectDimensionMeters}m subject across {frameCoveragePercent}% of your frame with a {focalLength}mm lens.
             </p>
+
+            {/* Direct Action Button in Result Card */}
+            <button
+              type="button"
+              onClick={handleApplyToDof}
+              className="mt-4 w-full py-2.5 px-4 rounded-xl bg-brand-cyan hover:bg-brand-cyanHover text-slate-950 font-bold text-xs font-mono flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(18,214,199,0.3)] active:scale-95"
+            >
+              <Focus size={15} />
+              <span>Apply {distance}m & {focalLength}mm to DoF Calculator</span>
+              <ChevronRight size={14} />
+            </button>
           </div>
 
           {/* Framing Visual Silhouette */}

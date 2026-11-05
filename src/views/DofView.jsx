@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   calculateDoF,
   SENSOR_PRESETS,
@@ -6,15 +6,27 @@ import {
   COMMON_FOCAL_LENGTHS
 } from '../services/opticalCalc.js';
 import RotaryDial from '../components/RotaryDial.jsx';
-import { Focus, Table, Info, ChevronRight } from 'lucide-react';
+import { Focus, Table, Info, ChevronRight, Check } from 'lucide-react';
 
-export default function DofView({ onSelectView }) {
-  const [sensorId, setSensorId] = useState('full-frame');
-  const [focalLength, setFocalLength] = useState(50);
-  const [apertureIndex, setApertureIndex] = useState(9); // f/2.8 in 1/3-stop series
-  const [distance, setDistance] = useState(3.0);
+export default function DofView({ onSelectView, initialParams }) {
+  const [sensorId, setSensorId] = useState(initialParams?.sensorId || 'full-frame');
+  const [focalLength, setFocalLength] = useState(initialParams?.focalLength || 50);
+  const [apertureIndex, setApertureIndex] = useState(initialParams?.apertureIndex ?? 9); // f/2.8 in 1/3-stop series
+  const [distance, setDistance] = useState(initialParams?.distance || 3.0);
+  const [importedNotice, setImportedNotice] = useState(Boolean(initialParams));
 
+  // Sync state whenever initialParams changes (e.g. transferred from Subject Distance)
+  useEffect(() => {
+    if (initialParams) {
+      if (initialParams.sensorId) setSensorId(initialParams.sensorId);
+      if (initialParams.focalLength) setFocalLength(initialParams.focalLength);
+      if (initialParams.distance) setDistance(initialParams.distance);
+      if (initialParams.apertureIndex !== undefined) setApertureIndex(initialParams.apertureIndex);
+      setImportedNotice(true);
+    }
+  }, [initialParams]);
 
+  const sensor = SENSOR_PRESETS.find(s => s.id === sensorId) || SENSOR_PRESETS[0];
   const aperture = APERTURE_STOPS[apertureIndex] || 2.8;
 
   const result = useMemo(() => {
@@ -53,6 +65,25 @@ export default function DofView({ onSelectView }) {
           <ChevronRight size={14} />
         </button>
       </div>
+
+      {/* Values Applied Alert Banner */}
+      {importedNotice && (
+        <div className="bg-brand-cyan/15 border border-brand-cyan/40 rounded-xl p-3 flex items-center justify-between text-xs font-mono text-brand-cyan animate-pulse">
+          <div className="flex items-center gap-2">
+            <Check size={16} className="text-brand-cyan" />
+            <span>
+              Values transferred from Subject Distance: Distance <strong>{distance}m</strong>, Lens <strong>{focalLength}mm</strong>, Sensor <strong>{sensor.name}</strong>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setImportedNotice(false)}
+            className="text-slate-400 hover:text-white text-xs px-2 py-0.5"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Main Grid: Controls vs Visual Depth Scale */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -134,7 +165,7 @@ export default function DofView({ onSelectView }) {
               <input
                 type="range"
                 min="0.3"
-                max="30"
+                max={Math.max(30, Math.ceil(distance * 1.25))}
                 step="0.1"
                 value={distance}
                 onChange={e => setDistance(Number(e.target.value))}

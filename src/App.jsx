@@ -17,6 +17,7 @@ import { predictUpcomingTransits } from './services/transitChaser.js';
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [suiteSubTab, setSuiteSubTab] = useState(null);
+  const [dofParams, setDofParams] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAROpen, setIsAROpen] = useState(false);
 
@@ -75,7 +76,11 @@ export default function App() {
   };
 
   // Unified navigation handler supporting both suites and legacy/sub-tab IDs
-  const handleSelectView = (view, subTab = null) => {
+  const handleSelectView = (view, subTab = null, params = null) => {
+    if (params) {
+      setDofParams(params);
+    }
+
     if (view === 'ar-viewfinder') {
       setIsAROpen(true);
       return;
@@ -200,6 +205,8 @@ export default function App() {
         return (
           <DofSuiteView
             initialTab={suiteSubTab || 'calc'}
+            dofParams={dofParams}
+            onSelectView={handleSelectView}
           />
         );
 
@@ -207,6 +214,7 @@ export default function App() {
         return (
           <FovSuiteView
             initialTab={suiteSubTab || 'fov'}
+            onSelectView={handleSelectView}
           />
         );
 

@@ -3,7 +3,7 @@ import DofView from './DofView.jsx';
 import DofTableView from './DofTableView.jsx';
 import { Focus, Table } from 'lucide-react';
 
-export default function DofSuiteView({ initialTab = 'calc' }) {
+export default function DofSuiteView({ initialTab = 'calc', dofParams }) {
   const [activeTab, setActiveTab] = useState(initialTab); // 'calc' or 'matrix'
 
   useEffect(() => {
@@ -56,9 +56,17 @@ export default function DofSuiteView({ initialTab = 'calc' }) {
 
       {/* Render selected tool */}
       {activeTab === 'calc' ? (
-        <DofView onSelectView={() => setActiveTab('matrix')} isEmbedded />
+        <DofView
+          onSelectView={() => setActiveTab('matrix')}
+          initialParams={dofParams}
+          isEmbedded
+        />
       ) : (
-        <DofTableView onSelectView={() => setActiveTab('calc')} isEmbedded />
+        <DofTableView
+          onSelectView={() => setActiveTab('calc')}
+          initialParams={dofParams}
+          isEmbedded
+        />
       )}
     </div>
   );
