@@ -48,18 +48,6 @@ export default function SubjectDistanceView({ onSelectView }) {
             Determine shooting distance based on focal length and subject frame coverage
           </p>
         </div>
-
-        {/* Apply to DoF Calculator Header Button */}
-        <button
-          type="button"
-          onClick={handleApplyToDof}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-cyan/15 hover:bg-brand-cyan/25 text-xs font-mono text-brand-cyan font-bold border border-brand-cyan/40 self-start sm:self-auto transition-all shadow-[0_0_12px_rgba(18,214,199,0.2)] active:scale-95"
-          title="Transfer distance and focal length directly to DoF Calculator"
-        >
-          <Focus size={15} />
-          <span>Apply to DoF Calculator</span>
-          <ChevronRight size={14} />
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
