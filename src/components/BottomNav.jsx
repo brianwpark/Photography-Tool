@@ -1,13 +1,14 @@
 import React from 'react';
-import { LayoutDashboard, Focus, Timer, Sparkles, Moon, Menu } from 'lucide-react';
+import { LayoutDashboard, Compass, Focus, Maximize2, Timer, Sparkles, Menu } from 'lucide-react';
 
 export default function BottomNav({ activeView, onSelectView, onToggleMenu }) {
   const navItems = [
     { id: 'dashboard', label: 'Hub', icon: LayoutDashboard },
+    { id: 'celestial', label: 'Planner', icon: Compass },
     { id: 'dof', label: 'DoF', icon: Focus },
-    { id: 'nd-timer', label: 'ND Timer', icon: Timer },
-    { id: 'spot-stars', label: 'Astro', icon: Sparkles },
-    { id: 'moon-transit', label: 'Moon', icon: Moon },
+    { id: 'fov', label: 'FoV', icon: Maximize2 },
+    { id: 'exposure', label: 'Exposure', icon: Timer },
+    { id: 'astrophotography', label: 'Astro', icon: Sparkles }
   ];
 
   return (
@@ -26,7 +27,7 @@ export default function BottomNav({ activeView, onSelectView, onToggleMenu }) {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Icon size={20} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
+              <Icon size={19} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               <span className="text-[10px] font-medium tracking-tight mt-1">
                 {item.label}
               </span>
@@ -34,13 +35,13 @@ export default function BottomNav({ activeView, onSelectView, onToggleMenu }) {
           );
         })}
 
-        {/* All Tools Menu Button */}
+        {/* All Tools Drawer Toggle */}
         <button
           onClick={onToggleMenu}
           className="flex flex-col items-center justify-center flex-1 py-1 px-1 text-slate-400 hover:text-slate-200"
         >
-          <Menu size={20} className="stroke-[1.8]" />
-          <span className="text-[10px] font-medium tracking-tight mt-1">Tools</span>
+          <Menu size={19} className="stroke-[1.8]" />
+          <span className="text-[10px] font-medium tracking-tight mt-1">Menu</span>
         </button>
       </div>
     </nav>

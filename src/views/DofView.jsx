@@ -11,8 +11,9 @@ import { Focus, Table, Info, ChevronRight } from 'lucide-react';
 export default function DofView({ onSelectView }) {
   const [sensorId, setSensorId] = useState('full-frame');
   const [focalLength, setFocalLength] = useState(50);
-  const [apertureIndex, setApertureIndex] = useState(5); // f/2.8
+  const [apertureIndex, setApertureIndex] = useState(9); // f/2.8 in 1/3-stop series
   const [distance, setDistance] = useState(3.0);
+
 
   const aperture = APERTURE_STOPS[apertureIndex] || 2.8;
 
@@ -157,15 +158,38 @@ export default function DofView({ onSelectView }) {
             </div>
           </div>
 
-          {/* Aperture Rotary Dial */}
+          {/* Aperture Rotary Dial in 1/3-Stop Increments */}
           <div className="glass-card rounded-2xl p-5 flex flex-col items-center">
             <RotaryDial
               options={APERTURE_STOPS.map(s => `f/${s}`)}
               selectedIndex={apertureIndex}
               onChange={setApertureIndex}
-              label="Tactile Lens Aperture Stop"
+              label="Tactile Lens Aperture Stop (1/3 Stop Steps)"
             />
+
+            {/* Quick-Jump to Major Base Stops */}
+            <div className="flex flex-wrap justify-center gap-1.5 mt-3 pt-3 border-t border-white/5 w-full">
+              {[1.4, 1.8, 2.0, 2.8, 4.0, 5.6, 8.0, 11, 16, 22].map(baseStop => {
+                const idx = APERTURE_STOPS.indexOf(baseStop);
+                const isSelected = apertureIndex === idx;
+                return (
+                  <button
+                    key={baseStop}
+                    type="button"
+                    onClick={() => setApertureIndex(idx)}
+                    className={`px-2 py-1 rounded text-[11px] font-mono transition-all ${
+                      isSelected
+                        ? 'bg-brand-cyan text-slate-950 font-bold'
+                        : 'bg-slate-900/80 text-slate-400 hover:text-white border border-white/5'
+                    }`}
+                  >
+                    f/{baseStop}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+
         </div>
 
         {/* Results & Visual Scale Column */}

@@ -83,3 +83,51 @@ For the ISS, centerline transit lasts approximately $0.5$ to $1.8$ seconds.
 - Visibility corridor width:
 $$W = 2 \times D_{\text{sat}} \times \tan\left(\frac{\theta_{\text{moon}}}{2}\right)$$
 Observers situated within distance $d < W/2$ from the centerline witness a solar or lunar transit.
+
+---
+
+## 6. PhotoPills Planner: Sun/Moon Desired Size Tool
+Used to calculate the exact shooting distance required to make the Sun or Moon appear at a desired physical diameter relative to a foreground monument, building, or subject:
+$$d = \frac{S}{2 \cdot \tan\left(\frac{\theta_{\text{body}}}{2}\right)} \approx \frac{S}{\theta_{\text{rad}}} \approx 107.5 \times S$$
+Where:
+- $S$ = Desired apparent diameter of Sun or Moon at the subject distance (meters)
+- $\theta_{\text{body}}$ = Angular diameter of the Sun or Moon ($\approx 0.533^\circ \approx 0.00931\text{ radians}$)
+- $d$ = Required shooting distance from camera to subject (meters)
+
+### Sun/Moon Size on Sensor:
+$$\text{Diameter on Sensor (mm)} = \frac{f\text{ (mm)}}{107.5}$$
+*Example:* A $500\text{mm}$ telephoto lens yields a Moon disk of $\frac{500}{107.5} \approx 4.65\text{ mm}$ on the sensor.
+
+---
+
+## 7. Focal Length Match Equivalence
+Calculates equivalent focal length and aperture on a secondary camera with different sensor crop factors ($C_1, C_2$) to achieve identical Field of View and Depth of Field:
+$$f_2 = f_1 \times \frac{C_1}{C_2}$$
+$$N_2 = N_1 \times \frac{C_1}{C_2}$$
+$$\text{ISO}_2 = \text{ISO}_1 \times \left(\frac{C_1}{C_2}\right)^2$$
+
+---
+
+## 8. Equivalent Exposure (Test Shot Reciprocity)
+Converts a high-ISO/wide-open test shot into a final clean long-exposure shot:
+$$t_2 = t_1 \times \left(\frac{N_2}{N_1}\right)^2 \times \left(\frac{\text{ISO}_1}{\text{ISO}_2}\right) \times 2^{\Delta \text{ND}}$$
+Where $\Delta \text{ND} = \text{ND}_{\text{final\_stops}} - \text{ND}_{\text{test\_stops}}$.
+
+---
+
+## 9. Photographic 1/3-Stop Aperture Scale (ISO 516 / Standard Progression)
+The aperture $f$-number $N$ follows the power series $N = (\sqrt{2})^{n/3} = 2^{n/6}$:
+- **$f/1.0$ base**: $1.0, 1.1, 1.2$
+- **$f/1.4$ base**: $1.4, 1.6, 1.8$
+- **$f/2.0$ base**: $2.0, 2.2, 2.5$
+- **$f/2.8$ base**: $2.8, 3.2, 3.5$
+- **$f/4.0$ base**: $4.0, 4.5, 5.0$
+- **$f/5.6$ base**: $5.6, 6.3, 7.1$
+- **$f/8.0$ base**: $8.0, 9.0, 10$
+- **$f/11$ base**: $11, 13, 14$
+- **$f/16$ base**: $16, 18, 20$
+- **$f/22$ base**: $22, 25, 29$
+- **$f/32$ base**: $32, 36, 40, 45$
+All optical calculators and dropdown selectors step through these exact 1/3-stop values.
+
+

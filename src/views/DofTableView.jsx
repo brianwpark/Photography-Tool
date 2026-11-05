@@ -6,10 +6,12 @@ export default function DofTableView({ onSelectView }) {
   const [sensorId, setSensorId] = useState('full-frame');
   const [distance, setDistance] = useState(3.0);
   const [metricMode, setMetricMode] = useState('hyperfocal'); // 'hyperfocal' or 'total'
+  const [stepIncrement, setStepIncrement] = useState('third'); // 'third' (1/3 stop) or 'full'
 
   const { apertures, focalLengths, matrix } = useMemo(() => {
-    return generateDofMatrix(sensorId, distance);
-  }, [sensorId, distance]);
+    return generateDofMatrix(sensorId, distance, stepIncrement === 'third');
+  }, [sensorId, distance, stepIncrement]);
+
 
   return (
     <div className="space-y-6">
@@ -56,8 +58,36 @@ export default function DofTableView({ onSelectView }) {
           </select>
         </div>
 
+        {/* Aperture Steps Mode */}
+        <div className="flex items-center gap-2">
+          <span className="text-slate-400">Aperture Scale:</span>
+          <div className="flex bg-slate-900 rounded-lg p-0.5 border border-white/10">
+            <button
+              onClick={() => setStepIncrement('third')}
+              className={`px-3 py-1 rounded-md transition-all ${
+                stepIncrement === 'third'
+                  ? 'bg-brand-cyan text-slate-950 font-bold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              1/3 Stop Steps
+            </button>
+            <button
+              onClick={() => setStepIncrement('full')}
+              className={`px-3 py-1 rounded-md transition-all ${
+                stepIncrement === 'full'
+                  ? 'bg-brand-amber text-slate-950 font-bold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Full Stops
+            </button>
+          </div>
+        </div>
+
         {/* Display Mode */}
         <div className="flex items-center gap-2">
+
           <span className="text-slate-400">Display Metric:</span>
           <div className="flex bg-slate-900 rounded-lg p-0.5 border border-white/10">
             <button

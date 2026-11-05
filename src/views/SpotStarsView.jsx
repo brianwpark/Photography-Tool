@@ -3,7 +3,9 @@ import {
   calculateSpotStars,
   ASTRO_CAMERAS
 } from '../services/astroCalc.js';
+import { APERTURE_STOPS } from '../services/opticalCalc.js';
 import { Sparkles, AlertTriangle, CheckCircle, Video, Orbit, ChevronRight } from 'lucide-react';
+
 
 export default function SpotStarsView({ onSelectView }) {
   const [cameraId, setCameraId] = useState('sony-a7iv');
@@ -126,18 +128,30 @@ export default function SpotStarsView({ onSelectView }) {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
-                  Lens Aperture
+                  Lens Aperture (1/3 Stop Steps)
                 </span>
                 <span className="text-base font-mono font-bold text-brand-amber">
                   f/{aperture}
                 </span>
               </div>
+              <select
+                value={aperture}
+                onChange={e => setAperture(Number(e.target.value))}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs mb-2"
+              >
+                {APERTURE_STOPS.filter(a => a <= 22).map(N => (
+                  <option key={N} value={N}>
+                    f/{N}
+                  </option>
+                ))}
+              </select>
               <div className="grid grid-cols-5 gap-2">
                 {[1.4, 1.8, 2.0, 2.8, 4.0].map(N => (
                   <button
                     key={N}
+                    type="button"
                     onClick={() => setAperture(N)}
-                    className={`py-2 rounded-xl text-center font-mono text-xs border transition-all ${
+                    className={`py-1.5 rounded-xl text-center font-mono text-xs border transition-all ${
                       aperture === N
                         ? 'bg-brand-amber text-slate-950 font-bold border-brand-amber'
                         : 'bg-slate-900/60 border-white/5 text-slate-300 hover:bg-slate-800'
@@ -148,6 +162,7 @@ export default function SpotStarsView({ onSelectView }) {
                 ))}
               </div>
             </div>
+
 
             {/* Declination Angle */}
             <div>

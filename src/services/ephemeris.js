@@ -137,3 +137,124 @@ export function getSunAndMoonData(date = new Date(), lat = 33.749, lng = -84.388
     }
   };
 }
+
+// Calculate Sun/Moon desired physical size or required shooting distance
+export function calculateSunMoonSizeTool({
+  desiredDiameterMeters = 10,
+  focalLengthMm = 500,
+  distanceToSubjectMeters = 1075
+}) {
+  // Average angular diameter of Sun & Moon ~ 0.533 deg = 0.00931 rad
+  const angularDiameterRad = 0.00931;
+  const angularDiameterDeg = 0.533;
+
+  // Distance needed for a desired apparent size behind subject:
+  // d = Size / (2 * tan(theta / 2)) ~= Size / theta_rad ~= Size * 107.5
+  const requiredDistanceMeters = Math.round(desiredDiameterMeters / angularDiameterRad);
+
+  // Apparent size in meters at a given distance:
+  const apparentSizeAtDistanceMeters = Number((distanceToSubjectMeters * angularDiameterRad).toFixed(2));
+
+  // Projected Moon/Sun image size on camera sensor:
+  // Size_sensor = f * tan(theta) ~= f / 107.5 mm
+  const sizeOnSensorMm = Number((focalLengthMm / 107.5).toFixed(2));
+
+  // Percentage of standard 36x24mm Full Frame sensor height (24mm)
+  const sensorCoveragePercent = Number(((sizeOnSensorMm / 24) * 100).toFixed(1));
+
+  return {
+    desiredDiameterMeters,
+    focalLengthMm,
+    distanceToSubjectMeters,
+    requiredDistanceMeters,
+    apparentSizeAtDistanceMeters,
+    sizeOnSensorMm,
+    sensorCoveragePercent,
+    angularDiameterDeg
+  };
+}
+
+// Upcoming Solar and Lunar Eclipses database
+export const UPCOMING_ECLIPSES = [
+  {
+    date: '2026-08-12',
+    name: 'Total Solar Eclipse',
+    type: 'Solar Total',
+    visibility: 'Greenland, Iceland, Spain (Partial in Europe & North America)',
+    magnitude: 1.039,
+    duration: '2m 18s'
+  },
+  {
+    date: '2026-08-28',
+    name: 'Partial Lunar Eclipse',
+    type: 'Lunar Partial',
+    visibility: 'Americas, Europe, Africa, Pacific',
+    magnitude: 0.930,
+    duration: '3h 18m'
+  },
+  {
+    date: '2027-02-06',
+    name: 'Annular Solar Eclipse',
+    type: 'Solar Annular',
+    visibility: 'South America, Antarctica, Atlantic, West Africa',
+    magnitude: 0.928,
+    duration: '7m 51s'
+  },
+  {
+    date: '2027-02-20',
+    name: 'Penumbral Lunar Eclipse',
+    type: 'Lunar Penumbral',
+    visibility: 'Americas, Europe, Africa, Asia',
+    magnitude: 0.952,
+    duration: '4h 04m'
+  },
+  {
+    date: '2027-08-02',
+    name: 'Great North African Solar Eclipse',
+    type: 'Solar Total',
+    visibility: 'Southern Spain, Morocco, Egypt, Saudi Arabia',
+    magnitude: 1.079,
+    duration: '6m 23s'
+  }
+];
+
+// SuperMoons and Monthly Moon Phase Calendar
+export function getMonthlyMoonCalendar(year = 2026, month = 10, lat = 33.749, lng = -84.388) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const days = [];
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(year, month, day, 12, 0, 0);
+    const illum = SunCalc.getMoonIllumination(d);
+    const pos = SunCalc.getMoonPosition(d, lat, lng);
+    const times = SunCalc.getMoonTimes(d, lat, lng);
+
+    const isFull = illum.fraction >= 0.96;
+    const isNew = illum.fraction <= 0.04;
+    const isSuper = isFull && pos.distance < 360000;
+
+    days.push({
+      day,
+      date: d,
+      phase: illum.phase,
+      fraction: Math.round(illum.fraction * 100),
+      phaseName: getMoonPhaseName(illum.phase),
+      isFull,
+      isNew,
+      isSuper,
+      distanceKm: Math.round(pos.distance),
+      rise: times.rise,
+      set: times.set
+    });
+  }
+
+  return days;
+}
+
+export const SUPERMOONS_LIST = [
+  { date: 'Nov 24, 2026', distanceKm: 357122, name: 'Beaver Supermoon', angularDiameter: '33.4 arcmin' },
+  { date: 'Dec 23, 2026', distanceKm: 356870, name: 'Cold Supermoon', angularDiameter: '33.5 arcmin' },
+  { date: 'Jan 22, 2027', distanceKm: 358400, name: 'Wolf Supermoon', angularDiameter: '33.3 arcmin' },
+  { date: 'Jul 18, 2027', distanceKm: 357450, name: 'Buck Supermoon', angularDiameter: '33.4 arcmin' }
+];
+

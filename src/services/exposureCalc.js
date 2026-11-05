@@ -78,3 +78,33 @@ export function calculateEV(aperture, shutterSeconds, iso = 100) {
   const isoOffset = Math.log2(iso / 100);
   return Number((ev100 - isoOffset).toFixed(1));
 }
+
+export function calculateEquivalentExposure({
+  testShutterSeconds = 1 / 125,
+  testAperture = 2.8,
+  testIso = 6400,
+  testNdStops = 0,
+  targetAperture = 8.0,
+  targetIso = 100,
+  targetNdStops = 10
+}) {
+  const apertureRatio = (targetAperture * targetAperture) / (testAperture * testAperture);
+  const isoRatio = testIso / targetIso;
+  const ndMultiplier = Math.pow(2, targetNdStops - testNdStops);
+  const targetSeconds = testShutterSeconds * apertureRatio * isoRatio * ndMultiplier;
+
+  return {
+    testShutterSeconds,
+    testAperture,
+    testIso,
+    testNdStops,
+    targetAperture,
+    targetIso,
+    targetNdStops,
+    targetSeconds,
+    formatted: formatDuration(targetSeconds),
+    isBulb: targetSeconds > 30,
+    evOffset: Number(Math.log2(apertureRatio * (1 / isoRatio) * ndMultiplier).toFixed(1))
+  };
+}
+

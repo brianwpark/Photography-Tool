@@ -10,13 +10,30 @@ export const SENSOR_PRESETS = [
   { id: 'smartphone', name: 'Smartphone 1/1.3" (3.8x)', crop: 3.8, coc: 0.008, width: 9.6, height: 7.2 }
 ];
 
+// Complete photographic 1/3-stop aperture scale (f/1.0 through f/45)
 export const APERTURE_STOPS = [
-  1.0, 1.2, 1.4, 1.8, 2.0, 2.8, 3.5, 4.0, 5.6, 8.0, 11, 16, 22, 32
+  1.0, 1.1, 1.2,
+  1.4, 1.6, 1.8,
+  2.0, 2.2, 2.5,
+  2.8, 3.2, 3.5,
+  4.0, 4.5, 5.0,
+  5.6, 6.3, 7.1,
+  8.0, 9.0, 10,
+  11, 13, 14,
+  16, 18, 20,
+  22, 25, 29,
+  32, 36, 40,
+  45
+];
+
+export const FULL_APERTURE_STOPS = [
+  1.0, 1.4, 2.0, 2.8, 4.0, 5.6, 8.0, 11, 16, 22, 32
 ];
 
 export const COMMON_FOCAL_LENGTHS = [
   12, 14, 16, 20, 24, 28, 35, 50, 70, 85, 105, 135, 200, 300, 400, 600
 ];
+
 
 export function calculateDoF({
   focalLengthMm = 50,
@@ -90,8 +107,8 @@ export function calculateDoF({
 }
 
 // Generate complete Hyperfocal & DoF matrix across apertures and focal lengths
-export function generateDofMatrix(sensorId = 'full-frame', distanceMeters = 3.0) {
-  const apertures = [1.4, 2.0, 2.8, 4.0, 5.6, 8.0, 11, 16];
+export function generateDofMatrix(sensorId = 'full-frame', distanceMeters = 3.0, useThirdStops = true) {
+  const apertures = useThirdStops ? APERTURE_STOPS.filter(a => a <= 22) : FULL_APERTURE_STOPS;
   const focalLengths = [14, 24, 35, 50, 85, 135, 200];
 
   const matrix = focalLengths.map(f => {
@@ -115,3 +132,27 @@ export function generateDofMatrix(sensorId = 'full-frame', distanceMeters = 3.0)
 
   return { apertures, focalLengths, matrix };
 }
+
+// Generate pure Hyperfocal Distance matrix across focal lengths and apertures
+export function generateHyperfocalMatrix(sensorId = 'full-frame', useThirdStops = true) {
+  const apertures = useThirdStops ? APERTURE_STOPS.filter(a => a <= 22) : FULL_APERTURE_STOPS;
+  const focalLengths = [12, 14, 16, 20, 24, 28, 35, 50, 70, 85, 105, 135, 200, 300];
+
+  const matrix = focalLengths.map(f => {
+    const row = { focalLength: f, stops: {} };
+    apertures.forEach(N => {
+      const calc = calculateDoF({
+        focalLengthMm: f,
+        aperture: N,
+        distanceMeters: 10.0,
+        sensorId
+      });
+      row.stops[N] = calc.hyperfocalMeters;
+    });
+    return row;
+  });
+
+  return { apertures, focalLengths, matrix };
+}
+
+

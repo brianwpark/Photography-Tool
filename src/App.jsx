@@ -5,23 +5,18 @@ import BottomNav from './components/BottomNav.jsx';
 import ArViewfinderModal from './components/ArViewfinderModal.jsx';
 
 import DashboardView from './views/DashboardView.jsx';
-import DofView from './views/DofView.jsx';
-import DofTableView from './views/DofTableView.jsx';
-import NdTimerView from './views/NdTimerView.jsx';
-import SpotStarsView from './views/SpotStarsView.jsx';
-import TimelapseView from './views/TimelapseView.jsx';
-import StarTrailsView from './views/StarTrailsView.jsx';
-import FovView from './views/FovView.jsx';
-import MoonTransitView from './views/MoonTransitView.jsx';
-import SunView from './views/SunView.jsx';
-import MeteorShowersView from './views/MeteorShowersView.jsx';
-import SubjectDistanceView from './views/SubjectDistanceView.jsx';
+import CelestialSuiteView from './views/CelestialSuiteView.jsx';
+import DofSuiteView from './views/DofSuiteView.jsx';
+import FovSuiteView from './views/FovSuiteView.jsx';
+import ExposureSuiteView from './views/ExposureSuiteView.jsx';
+import AstroSuiteView from './views/AstroSuiteView.jsx';
 
 import { getSunAndMoonData } from './services/ephemeris.js';
 import { predictUpcomingTransits } from './services/transitChaser.js';
 
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
+  const [suiteSubTab, setSuiteSubTab] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAROpen, setIsAROpen] = useState(false);
 
@@ -79,7 +74,105 @@ export default function App() {
     );
   };
 
-  // Render view by id
+  // Unified navigation handler supporting both suites and legacy/sub-tab IDs
+  const handleSelectView = (view, subTab = null) => {
+    if (view === 'ar-viewfinder') {
+      setIsAROpen(true);
+      return;
+    }
+
+    switch (view) {
+      // Celestial & Ephemeris Suite
+      case 'celestial':
+        setActiveView('celestial');
+        setSuiteSubTab(subTab || 'planner');
+        break;
+      case 'planner':
+        setActiveView('celestial');
+        setSuiteSubTab('planner');
+        break;
+      case 'moon-transit':
+        setActiveView('celestial');
+        setSuiteSubTab('moon');
+        break;
+      case 'sun':
+        setActiveView('celestial');
+        setSuiteSubTab('sun');
+        break;
+      case 'eclipses':
+        setActiveView('celestial');
+        setSuiteSubTab('eclipses');
+        break;
+
+      // Depth of Field Suite
+      case 'dof':
+        setActiveView('dof');
+        setSuiteSubTab(subTab || 'calc');
+        break;
+      case 'dof-table':
+        setActiveView('dof');
+        setSuiteSubTab('matrix');
+        break;
+
+      // Field of View & Framing Suite
+      case 'fov':
+        setActiveView('fov');
+        setSuiteSubTab(subTab || 'fov');
+        break;
+      case 'focal-match':
+        setActiveView('fov');
+        setSuiteSubTab('focal-match');
+        break;
+      case 'subject-distance':
+        setActiveView('fov');
+        setSuiteSubTab('subject-distance');
+        break;
+
+      // Exposure, ND & Timers Suite
+      case 'exposure':
+        setActiveView('exposure');
+        setSuiteSubTab(subTab || 'nd-timer');
+        break;
+      case 'nd-timer':
+        setActiveView('exposure');
+        setSuiteSubTab('nd-timer');
+        break;
+      case 'timer':
+        setActiveView('exposure');
+        setSuiteSubTab('timer');
+        break;
+
+      // Astrophotography & Night Sky Suite
+      case 'astrophotography':
+        setActiveView('astrophotography');
+        setSuiteSubTab(subTab || 'spot-stars');
+        break;
+      case 'spot-stars':
+        setActiveView('astrophotography');
+        setSuiteSubTab('spot-stars');
+        break;
+      case 'star-trails':
+        setActiveView('astrophotography');
+        setSuiteSubTab('star-trails');
+        break;
+      case 'timelapse':
+        setActiveView('astrophotography');
+        setSuiteSubTab('timelapse');
+        break;
+      case 'meteor-showers':
+        setActiveView('astrophotography');
+        setSuiteSubTab('meteor-showers');
+        break;
+
+      case 'dashboard':
+      default:
+        setActiveView('dashboard');
+        setSuiteSubTab(null);
+        break;
+    }
+  };
+
+  // Render view by active suite
   const renderActiveView = () => {
     switch (activeView) {
       case 'dashboard':
@@ -87,45 +180,56 @@ export default function App() {
           <DashboardView
             ephemData={ephemData}
             transits={transits}
-            onSelectView={setActiveView}
+            onSelectView={handleSelectView}
             onOpenAR={() => setIsAROpen(true)}
           />
         );
-      case 'dof':
-        return <DofView onSelectView={setActiveView} />;
-      case 'dof-table':
-        return <DofTableView onSelectView={setActiveView} />;
-      case 'nd-timer':
-        return <NdTimerView />;
-      case 'spot-stars':
-        return <SpotStarsView onSelectView={setActiveView} />;
-      case 'timelapse':
-        return <TimelapseView onSelectView={setActiveView} />;
-      case 'star-trails':
-        return <StarTrailsView />;
-      case 'fov':
-        return <FovView />;
-      case 'moon-transit':
+
+      case 'celestial':
         return (
-          <MoonTransitView
+          <CelestialSuiteView
             ephemData={ephemData}
             transits={transits}
             onOpenAR={() => setIsAROpen(true)}
             userLocation={location}
+            initialTab={suiteSubTab || 'planner'}
           />
         );
-      case 'sun':
-        return <SunView ephemData={ephemData} />;
-      case 'meteor-showers':
-        return <MeteorShowersView />;
-      case 'subject-distance':
-        return <SubjectDistanceView onSelectView={setActiveView} />;
+
+      case 'dof':
+        return (
+          <DofSuiteView
+            initialTab={suiteSubTab || 'calc'}
+          />
+        );
+
+      case 'fov':
+        return (
+          <FovSuiteView
+            initialTab={suiteSubTab || 'fov'}
+          />
+        );
+
+      case 'exposure':
+        return (
+          <ExposureSuiteView
+            initialTab={suiteSubTab || 'nd-timer'}
+          />
+        );
+
+      case 'astrophotography':
+        return (
+          <AstroSuiteView
+            initialTab={suiteSubTab || 'spot-stars'}
+          />
+        );
+
       default:
         return (
           <DashboardView
             ephemData={ephemData}
             transits={transits}
-            onSelectView={setActiveView}
+            onSelectView={handleSelectView}
             onOpenAR={() => setIsAROpen(true)}
           />
         );
@@ -137,7 +241,7 @@ export default function App() {
       {/* Top Header */}
       <Header
         activeView={activeView}
-        onSelectView={setActiveView}
+        onSelectView={handleSelectView}
         location={location}
         onDetectLocation={handleDetectLocation}
         isDetectingLocation={isDetectingLocation}
@@ -149,7 +253,7 @@ export default function App() {
         {/* Desktop / Tablet Sidebar Navigation */}
         <Sidebar
           activeView={activeView}
-          onSelectView={setActiveView}
+          onSelectView={handleSelectView}
           isMobileOpen={isMobileMenuOpen}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
           onOpenAR={() => setIsAROpen(true)}
@@ -164,7 +268,7 @@ export default function App() {
       {/* Mobile Fixed Bottom Navigation */}
       <BottomNav
         activeView={activeView}
-        onSelectView={setActiveView}
+        onSelectView={handleSelectView}
         onToggleMenu={() => setIsMobileMenuOpen(true)}
       />
 

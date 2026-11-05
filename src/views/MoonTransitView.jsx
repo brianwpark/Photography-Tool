@@ -5,7 +5,7 @@ import {
   calculateTransitGeometry,
   TRANSIT_OBJECT_TYPES
 } from '../services/transitChaser.js';
-import { formatTime, formatDate } from '../services/ephemeris.js';
+import { formatTime, formatDate, getMonthlyMoonCalendar, SUPERMOONS_LIST } from '../services/ephemeris.js';
 import {
   Moon,
   Radio,
@@ -17,7 +17,9 @@ import {
   Compass,
   AlertCircle,
   Eye,
-  Sliders
+  Sliders,
+  Calendar,
+  Sparkles
 } from 'lucide-react';
 
 export default function MoonTransitView({
@@ -26,9 +28,16 @@ export default function MoonTransitView({
   onOpenAR,
   userLocation
 }) {
+  const [subTab, setSubTab] = useState('transits'); // 'transits' or 'calendar'
   const [filterType, setFilterType] = useState('all');
   const [selectedTransit, setSelectedTransit] = useState(transits && transits.length > 0 ? transits[0] : null);
   const [centerlineOffset, setCenterlineOffset] = useState(0);
+
+  const monthlyDays = React.useMemo(() => {
+    const now = new Date();
+    return getMonthlyMoonCalendar(now.getFullYear(), now.getMonth(), userLocation?.lat || 33.749, userLocation?.lng || -84.388);
+  }, [userLocation?.lat, userLocation?.lng]);
+
 
   const filteredTransits = transits.filter(t => {
     if (filterType === 'all') return true;
@@ -72,8 +81,35 @@ export default function MoonTransitView({
         </button>
       </div>
 
-      {/* Top Split: Detailed Lunar Ephemeris vs Centerline Geometry */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      {/* Sub Tabs: Transits vs Moon Calendar & Supermoons */}
+      <div className="flex bg-slate-900 p-1 rounded-xl border border-white/5 text-xs font-mono w-fit">
+        <button
+          onClick={() => setSubTab('transits')}
+          className={`px-3 py-1.5 rounded-lg transition-all ${
+            subTab === 'transits'
+              ? 'bg-brand-cyan text-slate-950 font-bold shadow-[0_0_12px_rgba(18,214,199,0.3)]'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Transits & Chaser (TransitChaser)
+        </button>
+        <button
+          onClick={() => setSubTab('calendar')}
+          className={`px-3 py-1.5 rounded-lg transition-all ${
+            subTab === 'calendar'
+              ? 'bg-brand-cyan text-slate-950 font-bold shadow-[0_0_12px_rgba(18,214,199,0.3)]'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Moon Calendar & Supermoons
+        </button>
+      </div>
+
+      {subTab === 'transits' ? (
+        <>
+          {/* Top Split: Detailed Lunar Ephemeris vs Centerline Geometry */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
         {/* Real-time Lunar Ephemeris Card */}
         <div className="lg:col-span-6 glass-card rounded-2xl p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
@@ -298,6 +334,96 @@ export default function MoonTransitView({
           })}
         </div>
       </div>
+      </>
+      ) : (
+        /* Moon Calendar & Supermoons Explorer */
+        <div className="space-y-6">
+          {/* Upcoming SuperMoons Banner */}
+          <div className="glass-card rounded-2xl p-5 border-brand-amber/30 space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles size={18} className="text-brand-amber" />
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+                PhotoPills SuperMoon Calendar (Perigee Full Moons)
+              </h2>
+            </div>
+            <p className="text-xs text-slate-400">
+              When the Full Moon occurs near lunar perigee (&lt; 360,000 km from Earth), appearing up to 14% larger and 30% brighter.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {SUPERMOONS_LIST.map((sm, idx) => (
+                <div key={idx} className="bg-slate-900/90 p-3.5 rounded-xl border border-brand-amber/20 font-mono text-xs">
+                  <span className="text-[10px] text-brand-amber uppercase font-bold block mb-1">
+                    {sm.name}
+                  </span>
+                  <div className="text-base font-bold text-white">{sm.date}</div>
+                  <div className="text-[11px] text-slate-400 mt-1">Distance: {sm.distanceKm.toLocaleString()} km</div>
+                  <div className="text-[11px] text-brand-cyan">Apparent Size: {sm.angularDiameter}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Monthly Day-by-Day Moon Phase Grid */}
+          <div className="glass-card rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <div className="flex items-center gap-2">
+                <Calendar size={18} className="text-brand-cyan" />
+                <h3 className="text-sm font-bold text-white">Daily Moon Phase Calendar</h3>
+              </div>
+              <span className="text-xs font-mono text-brand-cyan">
+                {new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date())}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+              {monthlyDays.map((d) => (
+                <div
+                  key={d.day}
+                  className={`p-2.5 rounded-xl border flex flex-col items-center justify-between font-mono text-xs text-center transition-all ${
+                    d.isSuper
+                      ? 'bg-brand-amber/15 border-brand-amber/50 shadow-[0_0_10px_rgba(252,163,17,0.2)]'
+                      : d.isFull
+                      ? 'bg-cyan-500/10 border-cyan-400/40'
+                      : 'bg-slate-900/60 border-white/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full text-[10px] text-slate-400">
+                    <span className="font-bold text-white">Day {d.day}</span>
+                    {d.isSuper ? (
+                      <span className="text-[8px] bg-brand-amber/20 text-brand-amber px-1 rounded font-bold">SUPER</span>
+                    ) : d.isFull ? (
+                      <span className="text-[8px] bg-cyan-400/20 text-cyan-300 px-1 rounded font-bold">FULL</span>
+                    ) : null}
+                  </div>
+
+                  {/* Moon icon / percentage */}
+                  <div className="my-2 flex flex-col items-center">
+                    <div
+                      className="w-7 h-7 rounded-full border border-slate-600 relative overflow-hidden"
+                      style={{
+                        background: `radial-gradient(circle at 35% 35%, #e2e8f0 0%, #64748b 70%, #0f172a 100%)`
+                      }}
+                    >
+                      <div
+                        className="absolute inset-0 bg-slate-950"
+                        style={{
+                          opacity: 1 - d.fraction / 100,
+                          clipPath: d.phase < 0.5 ? 'inset(0 0 0 50%)' : 'inset(0 50% 0 0)'
+                        }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-white mt-1">{d.fraction}%</span>
+                  </div>
+
+                  <span className="text-[9px] text-slate-400 truncate w-full">{d.phaseName}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

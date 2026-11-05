@@ -38,7 +38,7 @@ export default function DashboardView({
               </h2>
             </div>
             <button
-              onClick={() => onSelectView('moon-transit')}
+              onClick={() => onSelectView('celestial', 'moon')}
               className="text-xs font-mono text-slate-400 hover:text-brand-cyan flex items-center gap-1 transition-colors"
             >
               <span>TransitChaser</span>
@@ -120,7 +120,7 @@ export default function DashboardView({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onSelectView('moon-transit')}
+              onClick={() => onSelectView('celestial', 'moon')}
               className="flex-1 py-2.5 px-4 rounded-xl bg-brand-amber hover:bg-brand-amberHover text-slate-950 font-semibold text-xs transition-all shadow-[0_0_15px_rgba(252,163,17,0.25)] flex items-center justify-center gap-1.5"
             >
               <Radio size={14} />
@@ -141,7 +141,7 @@ export default function DashboardView({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* DoF Card */}
         <div 
-          onClick={() => onSelectView('dof')}
+          onClick={() => onSelectView('dof', 'calc')}
           className="glass-card glass-card-interactive rounded-2xl p-5 cursor-pointer flex flex-col justify-between"
         >
           <div className="flex items-center justify-between mb-4">
@@ -164,7 +164,7 @@ export default function DashboardView({
 
         {/* ND Timer Card */}
         <div 
-          onClick={() => onSelectView('nd-timer')}
+          onClick={() => onSelectView('exposure', 'nd-timer')}
           className="glass-card glass-card-interactive rounded-2xl p-5 cursor-pointer flex flex-col justify-between"
         >
           <div className="flex items-center justify-between mb-4">
@@ -187,7 +187,7 @@ export default function DashboardView({
 
         {/* Spot Stars / Astrophotography Card */}
         <div 
-          onClick={() => onSelectView('spot-stars')}
+          onClick={() => onSelectView('astrophotography', 'spot-stars')}
           className="glass-card glass-card-interactive rounded-2xl p-5 cursor-pointer flex flex-col justify-between"
         >
           <div className="flex items-center justify-between mb-4">
@@ -211,7 +211,7 @@ export default function DashboardView({
 
       {/* Field of View & Crop Factor Banner */}
       <div 
-        onClick={() => onSelectView('fov')}
+        onClick={() => onSelectView('fov', 'fov')}
         className="glass-card glass-card-interactive rounded-2xl p-5 cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-3">
@@ -230,6 +230,90 @@ export default function DashboardView({
           <ChevronRight size={16} className="text-brand-cyan" />
         </div>
       </div>
+
+      {/* PhotoPills Advanced Field Planning & Equivalence Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Planner Card */}
+        <div
+          onClick={() => onSelectView('celestial', 'planner')}
+          className="glass-card glass-card-interactive rounded-2xl p-4 cursor-pointer flex flex-col justify-between border-brand-cyan/20"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Compass size={18} className="text-brand-cyan" />
+              <h4 className="font-bold text-white text-sm">Planner</h4>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-brand-cyan/15 text-brand-cyan font-bold">PILL</span>
+          </div>
+          <p className="text-[11px] text-slate-400 mb-3">
+            Plan Sun, Moon, Milky Way & desired Sun/Moon size behind monuments.
+          </p>
+          <span className="text-[11px] font-mono text-brand-cyan flex items-center gap-1">
+            <span>Launch Planner</span> &rarr;
+          </span>
+        </div>
+
+        {/* Focal Length Match */}
+        <div
+          onClick={() => onSelectView('fov', 'focal-match')}
+          className="glass-card glass-card-interactive rounded-2xl p-4 cursor-pointer flex flex-col justify-between border-brand-amber/20"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Focus size={18} className="text-brand-amber" />
+              <h4 className="font-bold text-white text-sm">Focal Match</h4>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-brand-amber/15 text-brand-amber font-bold">PILL</span>
+          </div>
+          <p className="text-[11px] text-slate-400 mb-3">
+            Match equivalent focal length, aperture & ISO across 2 camera sensors.
+          </p>
+          <span className="text-[11px] font-mono text-brand-amber flex items-center gap-1">
+            <span>Match Sensors</span> &rarr;
+          </span>
+        </div>
+
+        {/* Equivalent Exposure */}
+        <div
+          onClick={() => onSelectView('exposure', 'exposure')}
+          className="glass-card glass-card-interactive rounded-2xl p-4 cursor-pointer flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Timer size={18} className="text-purple-400" />
+              <h4 className="font-bold text-white text-sm">Exposure</h4>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 font-bold">PILL</span>
+          </div>
+          <p className="text-[11px] text-slate-400 mb-3">
+            Test shot high-ISO reciprocity conversion to final clean bulb shot.
+          </p>
+          <span className="text-[11px] font-mono text-purple-400 flex items-center gap-1">
+            <span>Calculate Reciprocity</span> &rarr;
+          </span>
+        </div>
+
+        {/* Field Timer */}
+        <div
+          onClick={() => onSelectView('exposure', 'timer')}
+          className="glass-card glass-card-interactive rounded-2xl p-4 cursor-pointer flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Clock size={18} className="text-emerald-400" />
+              <h4 className="font-bold text-white text-sm">Field Timer</h4>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold">AUDIO</span>
+          </div>
+          <p className="text-[11px] text-slate-400 mb-3">
+            Bulb countdown, timelapse intervalometer beeps & star trails timer.
+          </p>
+          <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
+            <span>Start Timer</span> &rarr;
+          </span>
+        </div>
+      </div>
+
 
       {/* Mandatory Landing Page Design Tagline Reveal Section */}
       <TaglineReveal />
