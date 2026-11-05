@@ -96,6 +96,8 @@ export default function App() {
         setActiveView('celestial');
         setSuiteSubTab('planner');
         break;
+      case 'transit-chaser':
+      case 'transits':
       case 'moon-transit':
         setActiveView('celestial');
         setSuiteSubTab('moon');

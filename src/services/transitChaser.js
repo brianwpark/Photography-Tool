@@ -1,13 +1,23 @@
 // TransitChaser Engine: Comprehensive Solar & Lunar Transit Prediction & 3D Airspace Geometry
-// Inspired by Transit Chaser (Rey Sandu Godakumbura) and ADSB live flight mechanics
+// Inspired by Transit Chaser (transitchaser.com by Rey Sandu Godakumbura) and ADSB live flight mechanics
 
 import { getSunAndMoonData } from './ephemeris.js';
+
+export const TRANSIT_MODES = {
+  SUN: 'sun',
+  MOON: 'moon',
+  COMBINED: 'combined',
+  CONTRAIL: 'contrail',
+  PLANE_ON_PLANE: 'plane_on_plane'
+};
 
 export const TRANSIT_OBJECT_TYPES = {
   ISS: 'iss',
   TIANGONG: 'tiangong',
   AIRCRAFT: 'aircraft',
-  ROCKET: 'rocket'
+  ROCKET: 'rocket',
+  CONTRAIL: 'contrail',
+  PLANE_ON_PLANE: 'plane_on_plane'
 };
 
 export const AIRCRAFT_FAMILIES = {
@@ -103,19 +113,25 @@ export const SAMPLE_FLEET = [
 ];
 
 /**
- * Predicts upcoming Lunar and Solar transit opportunities with 3D airspace geometry.
- * Supports configurable radii, warning windows, angular margins, and 3D boosted mode.
+ * Predicts upcoming transits based on TransitChaser algorithm:
+ * Supports Sun, Moon, Combined, Contrails, and Plane-on-Plane modes.
  */
 export function predictUpcomingTransits({
   userLat = 33.749,
   userLng = -84.388,
   daysAhead = 14,
-  targetBody = 'all', // 'all', 'moon', 'sun'
-  searchRadiusKm = 40,
+  targetBody = 'combined', // 'sun', 'moon', 'combined', 'contrail', 'plane_on_plane'
+  searchRadiusKm = 50,
   warningWindowMinutes = 15,
-  detectionMarginDeg = 1.5,
+  detectionMarginDeg = 2.5,
   boosted3D = true,
-  takeoffCorrection = false
+  hyperBoost = true,
+  takeoffCorrection = false,
+  callsignFilter = '',
+  minFlightLevel = 100,
+  maxFlightLevel = 450,
+  compassSector = 'all',
+  sunCalcEngine = '2.0.1'
 } = {}) {
   const transits = [];
   const now = new Date();
@@ -129,11 +145,16 @@ export function predictUpcomingTransits({
     const transitDate = new Date(now.getTime() + passTimeOffsetHours * 3600 * 1000);
     const ephem = getSunAndMoonData(transitDate, userLat, userLng);
 
-    // 1. ISS Orbital Transits (Solar & Lunar)
-    const canDoMoonIss = (targetBody === 'all' || targetBody === 'moon') && ephem.moon.altitudeDeg > 14;
-    const canDoSunIss = (targetBody === 'all' || targetBody === 'sun') && ephem.sun.altitudeDeg > 18;
+    const matchSun = targetBody === 'sun' || targetBody === 'combined' || targetBody === 'all';
+    const matchMoon = targetBody === 'moon' || targetBody === 'combined' || targetBody === 'all';
+    const matchContrail = targetBody === 'contrail';
+    const matchPlaneOnPlane = targetBody === 'plane_on_plane';
 
-    if (canDoMoonIss || (i % 3 === 0 && canDoSunIss)) {
+    // 1. ISS Orbital Transits (Solar & Lunar)
+    const canDoMoonIss = (matchMoon || matchContrail) && ephem.moon.altitudeDeg > 14;
+    const canDoSunIss = (matchSun || matchContrail) && ephem.sun.altitudeDeg > 18;
+
+    if (!matchPlaneOnPlane && (canDoMoonIss || (i % 3 === 0 && canDoSunIss))) {
       const isSun = !canDoMoonIss || (i % 2 === 0 && canDoSunIss);
       const bodyName = isSun ? 'Sun' : 'Moon';
       const bodyAlt = isSun ? ephem.sun.altitudeDeg : ephem.moon.altitudeDeg;
@@ -144,7 +165,6 @@ export function predictUpcomingTransits({
       const chordDurationSec = Number((0.54 + ((seed * 2.3 * i) % 0.85)).toFixed(2));
       const angularSizeArcsec = Number((54.5 * (420 / satRangeKm)).toFixed(1));
 
-      // Calculate Ingress, Centerline, Egress times
       const ingressDate = new Date(transitDate.getTime() - (chordDurationSec / 2) * 1000);
       const egressDate = new Date(transitDate.getTime() + (chordDurationSec / 2) * 1000);
 
@@ -181,7 +201,7 @@ export function predictUpcomingTransits({
     }
 
     // 2. Tiangong Chinese Space Station (CSS)
-    if (i % 3 === 0 && (targetBody === 'all' || targetBody === 'moon') && ephem.moon.altitudeDeg > 18) {
+    if (!matchPlaneOnPlane && i % 3 === 0 && matchMoon && ephem.moon.altitudeDeg > 18) {
       const distKm = Number(((seed * 4.1 * i) % 18.0).toFixed(1));
       const satRangeKm = Math.round(390 + ((seed * 5 * i) % 280));
       const chordDuration = Number((0.68 + ((seed * 1.7) % 0.6)).toFixed(2));
@@ -224,50 +244,39 @@ export function predictUpcomingTransits({
     const aircraftSeedIndex = (i + Math.floor(seed)) % SAMPLE_FLEET.length;
     const planeSpec = SAMPLE_FLEET[aircraftSeedIndex];
 
-    const canDoMoonPlane = (targetBody === 'all' || targetBody === 'moon') && ephem.moon.altitudeDeg > 10 && ephem.moon.altitudeDeg < 72;
-    const canDoSunPlane = (targetBody === 'all' || targetBody === 'sun') && ephem.sun.altitudeDeg > 12 && ephem.sun.altitudeDeg < 75;
+    const canDoMoonPlane = (matchMoon || matchContrail) && ephem.moon.altitudeDeg > 10 && ephem.moon.altitudeDeg < 72;
+    const canDoSunPlane = (matchSun || matchContrail) && ephem.sun.altitudeDeg > 12 && ephem.sun.altitudeDeg < 75;
 
-    if (canDoMoonPlane || canDoSunPlane) {
+    if (!matchPlaneOnPlane && (canDoMoonPlane || canDoSunPlane)) {
       const isSun = !canDoMoonPlane || (i % 2 !== 0 && canDoSunPlane);
       const bodyName = isSun ? 'Sun' : 'Moon';
       const bodyAlt = isSun ? ephem.sun.altitudeDeg : ephem.moon.altitudeDeg;
       const bodyAz = isSun ? ephem.sun.azimuthCompass : ephem.moon.azimuthCompass;
 
-      // Realistic 3D airspace geometry parameters
-      const flightLevelHundreds = Math.round(280 + ((seed * 7 * i) % 130)); // FL280 to FL410 (28,000 - 41,000 ft)
+      const flightLevelHundreds = Math.round(280 + ((seed * 7 * i) % 130)); // FL280 to FL410
       const altitudeMeters = Math.round(flightLevelHundreds * 100 * 0.3048);
-      const groundSpeedKnots = Math.round(440 + ((seed * 9 * i) % 65)); // 440 - 505 knots (~815 - 935 km/h)
+      const groundSpeedKnots = Math.round(440 + ((seed * 9 * i) % 65)); // 440 - 505 knots
       const groundSpeedMps = groundSpeedKnots * 0.514444;
 
-      // Range from observer to plane in kilometers: Range = Altitude / sin(Elevation)
       const slantRangeKm = Number((altitudeMeters / (1000 * Math.sin(Math.max(0.15, (bodyAlt * Math.PI) / 180)))).toFixed(1));
-
-      // Angular size of aircraft in arcseconds: theta = 206265 * (Wingspan / Range)
       const angularSizeArcsec = Number(((206265 * planeSpec.wingspanM) / (slantRangeKm * 1000)).toFixed(1));
-
-      // Sun/Moon angular diameter ~1860" (0.52°).
-      // Transit chord duration: Time to cross ~0.52° at angular speed
       const angularSpeedArcsecPerSec = (206265 * groundSpeedMps) / (slantRangeKm * 1000);
       const chordDurationSec = Number((1860 / Math.max(100, angularSpeedArcsecPerSec)).toFixed(2));
 
       const centerlineDistKm = Number(((seed * 2.1 * i) % Math.min(searchRadiusKm, 9.4)).toFixed(1));
       const corridorWidthKm = Number((chordDurationSec * groundSpeedMps * 0.001 * 2 + 1.2).toFixed(1));
 
-      // Timing calculations
       const ingressDate = new Date(transitDate.getTime() - (chordDurationSec / 2) * 1000);
       const egressDate = new Date(transitDate.getTime() + (chordDurationSec / 2) * 1000);
 
-      // Vertical climb/descent
       const verticalSpeedFpm = takeoffCorrection && i % 3 === 0 ? Math.round(1400 + ((seed * 5) % 800)) : 0;
-
-      // Contrail prediction (FL > 320 and high altitude moisture)
       const contrailRisk = flightLevelHundreds > 320
         ? 'High (Dense Crisp Condensation Trail)'
         : 'Low / Dissipating Flaps Contrail';
 
       transits.push({
         id: `plane-${bodyName.toLowerCase()}-${i}`,
-        type: TRANSIT_OBJECT_TYPES.AIRCRAFT,
+        type: matchContrail ? TRANSIT_OBJECT_TYPES.CONTRAIL : TRANSIT_OBJECT_TYPES.AIRCRAFT,
         family: planeSpec.family,
         name: `${planeSpec.operator} ${planeSpec.model}`,
         callsign: `${planeSpec.callsign} (${planeSpec.operator})`,
@@ -299,8 +308,52 @@ export function predictUpcomingTransits({
       });
     }
 
-    // 4. Rocket Launch Transit Opportunity
-    if ((i === 4 || i === 11) && (targetBody === 'all' || targetBody === 'moon')) {
+    // 4. Dedicated Plane-on-Plane Dual Aircraft Alignment
+    if (matchPlaneOnPlane || (i % 4 === 0 && targetBody === 'combined')) {
+      const leadPlane = SAMPLE_FLEET[(i) % SAMPLE_FLEET.length];
+      const chasePlane = SAMPLE_FLEET[(i + 3) % SAMPLE_FLEET.length];
+      const leadFL = Math.round(360 + ((seed * 3 * i) % 40)); // FL360-FL400
+      const chaseFL = leadFL - Math.round(30 + ((seed * 2) % 40)); // FL310-FL350
+      const crossingAlt = Math.round(25 + ((seed * 4 * i) % 35));
+      const crossingAz = Math.round((ephem.moon.azimuthCompass + 45) % 360);
+      const crossingDurationSec = Number((0.42 + ((seed * 1.5) % 0.35)).toFixed(2));
+
+      transits.push({
+        id: `plane-on-plane-${i}`,
+        type: TRANSIT_OBJECT_TYPES.PLANE_ON_PLANE,
+        family: AIRCRAFT_FAMILIES.HEAVY,
+        name: `Plane-on-Plane: ${leadPlane.operator} & ${chasePlane.operator}`,
+        callsign: `${leadPlane.callsign} & ${chasePlane.callsign}`,
+        operator: `${leadPlane.operator} / ${chasePlane.operator}`,
+        model: `${leadPlane.model} passing over ${chasePlane.model}`,
+        celestialBody: 'Open Sky Alignment',
+        date: new Date(transitDate.getTime() + 7200000),
+        ingressTime: new Date(transitDate.getTime() + 7200000 - 400),
+        centerlineTime: new Date(transitDate.getTime() + 7200000),
+        egressTime: new Date(transitDate.getTime() + 7200000 + 400),
+        altitudeDeg: crossingAlt,
+        azimuthDeg: crossingAz,
+        centerlineDistKm: 0.8,
+        corridorWidthKm: 4.2,
+        chordDurationSec: crossingDurationSec,
+        rangeKm: Number(((leadFL * 100 * 0.3048) / (1000 * Math.sin((crossingAlt * Math.PI) / 180))).toFixed(1)),
+        flightLevelFt: leadFL * 100,
+        groundSpeedKnots: 485,
+        verticalSpeedFpm: 0,
+        angularSizeArcsec: 145.0,
+        illuminationState: 'Dual Aircraft Silhouette Crossing',
+        lunarPhasePercent: 100,
+        groundTrackHeadingDeg: Math.round((crossingAz + 90) % 360),
+        quality: 'Rare Dual Aircraft Intersection',
+        isFunLivery: Boolean(leadPlane.funLivery || chasePlane.funLivery),
+        funLiveryDetails: `Lead: FL${leadFL} | Chase: FL${chaseFL}`,
+        contrailRisk: 'High (Intersecting Shadow Contrails)',
+        recommendedShutterSpeed: '1/3200s (High Speed Telephoto)'
+      });
+    }
+
+    // 5. Rocket Launch Transit Opportunity
+    if ((i === 4 || i === 11) && (matchMoon || matchSun || matchContrail)) {
       const launchSite = LAUNCH_SITES[0];
       const launchDate = new Date(now.getTime() + (i * 24 + 4) * 3600 * 1000);
       const chordDuration = 2.4;
@@ -339,8 +392,28 @@ export function predictUpcomingTransits({
     }
   }
 
+  // Filter by callsign if user entered a query
+  let filtered = transits;
+  if (callsignFilter.trim()) {
+    const q = callsignFilter.toLowerCase().trim();
+    filtered = filtered.filter(t =>
+      t.callsign.toLowerCase().includes(q) ||
+      t.name.toLowerCase().includes(q) ||
+      t.operator.toLowerCase().includes(q)
+    );
+  }
+
+  // Filter by altitude if within commercial flight level range
+  filtered = filtered.filter(t => {
+    if (t.type === TRANSIT_OBJECT_TYPES.ISS || t.type === TRANSIT_OBJECT_TYPES.TIANGONG || t.type === TRANSIT_OBJECT_TYPES.ROCKET) {
+      return true;
+    }
+    const flHundreds = Math.round(t.flightLevelFt / 100);
+    return flHundreds >= minFlightLevel && flHundreds <= maxFlightLevel;
+  });
+
   // Sort upcoming transits chronologically
-  return transits.sort((a, b) => a.date.getTime() - b.date.getTime());
+  return filtered.sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
 /**

@@ -41,7 +41,7 @@ export default function DashboardView({
               onClick={() => onSelectView('celestial', 'moon')}
               className="text-xs font-mono text-slate-400 hover:text-brand-cyan flex items-center gap-1 transition-colors"
             >
-              <span>TransitChaser</span>
+              <span>Transit Chaser</span>
               <ChevronRight size={14} />
             </button>
           </div>

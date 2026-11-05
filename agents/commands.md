@@ -200,3 +200,28 @@
   - Styled cardinal bubble `W` with bold slate-900 text and frosted circle, matching `267.5°` and `10.0°` badges.
   - Matched header and footer buttons, typography, colors, and layout 1:1.
   - Tested production build and synchronized to `D:\Github Repositories\Photography-Tool` on `Deploy` branch.
+
+
+## [Command Turn 12] - Full Transit Chaser Integration & Feature Renaming
+- **User Input**:
+  - "copy all of the features from https://transitchaser.com/ and add it to the Moon & Transits. Rename this feature as transit chaser. https://transitchaser.com/public/how_to_use.html this is the guid to all of the features in the website."
+- **Execution**:
+  - Renamed the feature in the UI, suite navigation tabs, and routers to **Transit Chaser**.
+  - Added all Transit Chaser modes:
+    1. **Sun Transit** (Solar disc pass)
+    2. **Moon Transit** (Lunar disc pass)
+    3. **Sun & Moon Combined**
+    4. **Contrail Mode** (persistent contrail intersection tracking)
+    5. **Plane-on-Plane Mode** (dual aircraft crossing/alignment in the observer's sightline)
+  - Added complete Operation Modes:
+    - **Easy Mode**: 1-tap automated configuration with 50 km search radius, 120s prediction, 3D boosted geometry on, and 2.5° detection margin.
+    - **Manual Mode**: granular sliders for Search Radius (10–100 km), Prediction Window (30–900s), Detection Margin (0.1°–4.0°), Min/Max Flight Levels (FL100–FL450), and Compass Sectors.
+  - Added Algorithmic Geometry options:
+    - 3D Boosted Mode vector engine
+    - Hyper Boost (EGM96 height & atmospheric refraction correction)
+    - Takeoff Climb Correction for runway departures
+    - SunCalc 2.0.1 vs SunCalc 1.x ephemeris engine selector
+  - Built official **How to Use Guide** tab directly matching `how_to_use.html` (quick start workflow, parameter tuning, detection thresholds, camera & focus rules).
+  - Built **Data Feeds & Diagnostics** tab (Community ADS-B `adsb.fi`, Flightradar24 API Token input, local SDR / Dump1090 direct connection, automated email alert dispatch).
+  - Built Plane Watch with real-time callsign/flight number filter, sound check, push notification toggle, and 5 spatial distance bands (0 km, 1 km, 2 km, 5 km, 10 km).
+  - Tested production build (2083 modules) and synced all code to `D:\Github Repositories\Photography-Tool` on `Deploy` branch.

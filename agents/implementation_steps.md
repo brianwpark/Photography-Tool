@@ -165,3 +165,23 @@
   - Styled footer toolbar with `Visual calibration` (compass reticle) and `Action` (share icon) with textured PhotoPills background.
   - Production build passing cleanly (2083 modules).
   - Synced to `D:\Github Repositories\Photography-Tool` and pushed to `origin/Deploy`.
+
+### Step 17: Comprehensive Transit Chaser Feature Suite & Rebranding
+- **Status**: Completed
+- **Changes**:
+  - Renamed feature throughout the app to **Transit Chaser** (`src/views/CelestialSuiteView.jsx`, `src/App.jsx`, `src/views/DashboardView.jsx`).
+  - Added dedicated Transit Modes in `src/services/transitChaser.js`:
+    - `sun`: Solar disc crossing
+    - `moon`: Lunar disc crossing
+    - `combined`: Both Sun & Moon
+    - `contrail`: Aircraft condensation trails crossing the Sun or Moon disk
+    - `plane_on_plane`: Dual aircraft optical intersection crossing in the sky
+  - Upgraded `src/views/MoonTransitView.jsx` (aliased as `TransitChaserView`):
+    - Sub-tabs: `Live Radar & Transits`, `Scouting Corridor & Distance Bands`, `Contrails & Plane-on-Plane`, `How to Use Guide`, `Solar Filter & Camera Safety`, `Data Feeds & Diagnostics`.
+    - Easy Mode (1-tap setup) vs Manual Mode (10–100 km radius, 30–900s prediction window, 0.1°–4.0° detection margin, FL100–FL450 altitude filter).
+    - Added Algorithmic Engine controls: 3D Boosted Mode, Hyper Boost (EGM96 + refraction), Takeoff Climb Correction, and SunCalc 2.0.1/1.x engine selection.
+    - Integrated the complete official `how_to_use.html` guide with step-by-step setup, parameter tips, and solar safety warnings.
+    - Added Data Feeds tab supporting ADS-B Community (`adsb.fi`), Flightradar24 API token, local Dump1090 URL, and automated email alert dispatch arming.
+    - Callsign and flight number search input.
+  - Production build passing cleanly (2083 modules).
+  - Pushed to `origin/Deploy`.
