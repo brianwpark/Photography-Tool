@@ -181,3 +181,22 @@
 
 
 
+
+
+## [Command Turn 11] - Exact PhotoPills Augmented Reality Alignment
+- **User Input**: Reference image `media_1793857020449_8ec0848b.jpg` showing PhotoPills Augmented Reality screen with:
+  - Top navigation bar: `Now` (cyan), `Augmented Reality` (bold white), `Done` (cyan).
+  - Top-left timestamp: `4/17/18, 6:51 PM`.
+  - True 3D perspective projection yielding natural curved elevation lines (horizontal arcs) and curved azimuthal meridians.
+  - Horizon line with frosted circular badges: `W` (cardinal West in bold black font) and `267.5°` (exact numeric azimuth).
+  - 10.0° elevation line with frosted circular badge: `10.0°`.
+  - Sun trajectory curve in bright golden-yellow with orange gradient near sunset, circular hourly nodes, and bold yellow time labels (`6:00 PM`, `7:00 PM`, `8:00 PM`).
+  - Active Sun disc with luminous halo positioned at current time (`6:51 PM`).
+  - Madrid Temple of Debod architectural silhouette and calm reflecting pool as photorealistic backdrop when camera is off or simulated mode is on.
+  - Bottom bar with textured PhotoPills background and dual action buttons: `Visual calibration` (compass reticle) and `Action` (share icon).
+- **Execution**:
+  - Implemented exact 3D spherical pinhole camera perspective projection matrix (`X, Y, Z` rotations around yaw, pitch, roll) in `ArViewfinderModal.jsx`.
+  - Upgraded elevation lines to render as natural curved arcs and meridians.
+  - Styled cardinal bubble `W` with bold slate-900 text and frosted circle, matching `267.5°` and `10.0°` badges.
+  - Matched header and footer buttons, typography, colors, and layout 1:1.
+  - Tested production build and synchronized to `D:\Github Repositories\Photography-Tool` on `Deploy` branch.

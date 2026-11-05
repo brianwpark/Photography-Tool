@@ -151,3 +151,17 @@
 
 
 
+
+### Step 16: Augmented Reality Visual Alignment with PhotoPills Reference
+- **Status**: Completed
+- **Changes**:
+  - Upgraded `src/components/ArViewfinderModal.jsx` with true 3D spherical pinhole camera projection matrix (yaw, pitch, roll).
+  - Elevation parallels ($10^\circ$ increments) render as naturally curved arcs matching optical wide-angle camera perspectives.
+  - Implemented PhotoPills-style frosted circular badges: cardinal `W` on the horizon in bold dark font, exact azimuth `267.5°`, and elevation `10.0°`.
+  - Replaced straight lines with realistic continuous Sun trajectory gradient transitioning from bright gold to sunset orange at the horizon.
+  - Positioned glowing Sun disc directly at the current time node (`6:51 PM`).
+  - Added Madrid Temple of Debod architectural silhouette and calm reflecting pool as the photorealistic backdrop when camera is off or simulated mode is on.
+  - Styled header with `Now` (cyan), `Augmented Reality` (bold white), and `Done` (cyan).
+  - Styled footer toolbar with `Visual calibration` (compass reticle) and `Action` (share icon) with textured PhotoPills background.
+  - Production build passing cleanly (2083 modules).
+  - Synced to `D:\Github Repositories\Photography-Tool` and pushed to `origin/Deploy`.
