@@ -139,6 +139,13 @@
      - Dynamic slider `max` expansion to accommodate any shooting distance.
      - Confirmation banner displaying the applied values.
 
+## Command Turn 9: Clean Up Subject Distance View Header Button
+- **User Request**: "remove the apply to dof calculator button at the top of subject distance triangulation. keep the button right bellow the required shooting distance"
+- **Changes**:
+  1. Removed the top header "Apply to DoF Calculator" button from `SubjectDistanceView.jsx`.
+  2. Retained the prominent action button directly below the Required Shooting Distance result card (`Apply Xm & Ymm to DoF Calculator`).
+
+
 
 
 

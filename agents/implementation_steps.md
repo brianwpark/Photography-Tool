@@ -120,6 +120,12 @@
   - [x] Updated `DofSuiteView.jsx` and `DofView.jsx` to receive and apply transferred distance, focal length, and sensor presets, with dynamic slider scaling and confirmation toast.
   - [x] Synced to `D:\Github Repositories\Photography-Tool` and pushed commit `a5436c3` to `Deploy`.
 
+- [x] **Step 14: Header Button Removal in Subject Distance View**
+  - [x] Removed duplicate header button in `SubjectDistanceView.jsx`.
+  - [x] Retained the dedicated action button directly beneath the Required Shooting Distance result value.
+  - [x] Synced to `D:\Github Repositories\Photography-Tool` and pushed commit `09e3948` to `Deploy`.
+
+
 
 
 
