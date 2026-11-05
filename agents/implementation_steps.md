@@ -89,6 +89,23 @@
   - [x] Updated `ArViewfinderModal.jsx` with fallbacks, insecure context prompt with 1-click HTTPS redirect, iOS `DeviceOrientationEvent.requestPermission()`, `playsInline` video handling, and user gesture triggers.
   - [x] Synchronized changes to `D:\Github Repositories\Photography-Tool`.
 
+- [x] **Step 11: PhotoPills-Style AR Viewfinder HUD with Celestial Paths & Time Scrubber**
+  - [x] Added `getDailyCelestialPath` function to `src/services/ephemeris.js` calculating 24h Sun/Moon trajectory curves and hourly milestones.
+  - [x] Rebuilt `src/components/ArViewfinderModal.jsx` matching reference photo (`media_1793857020449_8ec0848b.jpg`):
+    - Real-time horizon line (0.0° altitude) with frosted circular badges (`[W]`, `[247.5°]`, `[SW]`, `[E]`, `[N]`, etc.).
+    - Elevation lines in 10° steps ($-20^\circ$ to $+80^\circ$) with degree badges (`10.0°`, `20.0°`).
+    - Azimuthal meridian lines forming a spherical celestial dome.
+    - Golden Sun trajectory arc with hourly node markers and time text labels (`6:00 PM`, `7:00 PM`, `8:00 PM`).
+    - Cyan Moon trajectory arc with hourly node markers.
+    - Active glowing Sun disc with corona and active Moon disc at current selected time.
+    - Interactive 24-hour time scrubber slider with play/pause celestial motion animation.
+    - Date picker input and quick step buttons (`-1h`, `-10m`, `+10m`, `+1h`).
+    - Top bar with PhotoPills style: `Now` button, `Augmented Reality` title, `Done` button, and `M/D/YY, H:MM AM/PM` timestamp.
+    - "Visual calibration" drawer to adjust azimuth offset ($\pm 45^\circ$) and pitch offset ($\pm 30^\circ$).
+  - [x] Verified full build with `npm run build` (0 warnings, 0 errors).
+  - [x] Committed and pushed to GitHub `Deploy` branch (`8c00159`).
+
+
 
 
 

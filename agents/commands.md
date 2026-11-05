@@ -88,17 +88,29 @@
   6. **Night AR & Viewfinder HUD (`ar-viewfinder`)**: Fullscreen AR camera HUD with celestial overlays.
   7. **Field Hub / Dashboard (`dashboard`)**: Unified quick-access dashboard.
 
-## Command Turn 5: Fix "camera API not available in this enviornment" on Mobile
-- **Problem**: When accessing the web app from a mobile phone (iOS Safari / Android Chrome) over the local network via `http://<ip>:3000`, mobile browsers enforce the W3C WebRTC Secure Context policy and completely disable `navigator.mediaDevices` on unencrypted HTTP.
-- **Solution Implemented**:
-  1. Installed `@vitejs/plugin-basic-ssl` and configured `vite.config.js` with HTTPS enabled.
-  2. Vite dev server now broadcasts secure HTTPS endpoints (`https://10.100.1.180:3000` / `https://localhost:3000`).
-  3. Updated `src/components/ArViewfinderModal.jsx`:
-     - Added cross-browser `getUserMedia` retriever with fallback from `environment` back camera to general video.
-     - Added automatic detection for insecure context with a one-click button: "Switch to HTTPS".
-     - Added iOS 13+ `DeviceOrientationEvent.requestPermission` handler on user touch to unlock accelerometer and gyroscope on iPhone.
-     - Added `playsInline`, `autoPlay`, and `muted` attributes to the `<video>` element with explicit `play()` error handling for iOS Safari WebKit.
-     - Added "Tap to Enable Camera Stream" and "Retry Camera" actions so user gestures satisfy mobile browser permission policies.
+## Command Turn 6: PhotoPills-Style Augmented Reality (AR) HUD Specification
+- **User Request**: Reference photo `media_1793857020449_8ec0848b.jpg` (PhotoPills AR View).
+- **Core Features Implemented**:
+  1. **Sun & Moon Trajectory Curves**:
+     - Full 24-hour continuous golden sun arc and cyan moon arc.
+     - Hourly node markers with prominent time labels (`6:00 PM`, `7:00 PM`, `8:00 PM`) aligned along the path.
+     - Active celestial disc (pulsing glowing Sun with corona, illuminated Moon disc with lunar phase) rendered at exact calculated azimuth and elevation for the selected minute.
+  2. **Horizon & Grid Lines**:
+     - Prominent horizon line at elevation $0.0^\circ$.
+     - Translucent frosted circular badges on horizon: Cardinal points (`W`, `E`, `N`, `S`), intermediate headings (`SW`, `SE`, `NW`, `NE`), and exact bearing badges (`[247.5°]`).
+     - Elevation lines in 10-degree increments ($-20^\circ$ up to $+80^\circ$) with circular degree badges (`10.0°`, `20.0°`).
+     - Azimuthal meridian lines running perpendicular across the spherical celestial dome.
+  3. **Interactive Date & Time Scrubber**:
+     - Time slider (0 to 1439 minutes) with continuous play/pause motion animation.
+     - Step buttons: `-1h`, `-10m`, `+10m`, `+1h`.
+     - Date picker allowing any shoot date to be selected.
+     - Top-left "Now" button to snap back to the live clock.
+     - Top-left formatted timestamp display (`4/17/18, 6:51 PM` style).
+  4. **Visual Calibration & Controls**:
+     - "Visual calibration" trigger opening $\pm 45^\circ$ azimuth and $\pm 30^\circ$ pitch slider to correct for phone compass magnetic drift.
+     - Display mode selector: `Sun`, `Moon`, or `Both`.
+     - Mouse and touch drag navigation for desktop and non-sensor testing.
+
 
 
 
