@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PlannerView from './PlannerView.jsx';
 import MoonTransitView from './MoonTransitView.jsx';
 import SunView from './SunView.jsx';
-import { Compass, Moon, Sun, Calendar, Crosshair } from 'lucide-react';
+import { Compass, Moon, Sun, Calendar } from 'lucide-react';
 import { UPCOMING_ECLIPSES } from '../services/ephemeris.js';
 
 export default function CelestialSuiteView({
@@ -51,13 +51,13 @@ export default function CelestialSuiteView({
           <button
             onClick={() => setActiveTab('moon')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === 'moon' || activeTab === 'transits' || activeTab === 'transit-chaser'
+              activeTab === 'moon'
                 ? 'bg-brand-cyan text-slate-950 font-bold shadow-[0_0_12px_rgba(18,214,199,0.3)]'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Crosshair size={13} />
-            <span>Transit Chaser</span>
+            <Moon size={13} />
+            <span>Moon & Transits</span>
           </button>
           <button
             onClick={() => setActiveTab('sun')}
@@ -87,12 +87,12 @@ export default function CelestialSuiteView({
       {/* Render selected tool */}
       {activeTab === 'planner' && (
         <PlannerView
-          onSelectView={view => setActiveTab((view === 'moon-transit' || view === 'transit-chaser') ? 'moon' : view)}
+          onSelectView={view => setActiveTab(view === 'moon-transit' ? 'moon' : view)}
           userLocation={userLocation}
           isEmbedded
         />
       )}
-      {(activeTab === 'moon' || activeTab === 'transits' || activeTab === 'transit-chaser') && (
+      {activeTab === 'moon' && (
         <MoonTransitView
           ephemData={ephemData}
           transits={transits}

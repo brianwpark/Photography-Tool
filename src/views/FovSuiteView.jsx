@@ -4,7 +4,7 @@ import FocalLengthMatchView from './FocalLengthMatchView.jsx';
 import SubjectDistanceView from './SubjectDistanceView.jsx';
 import { Maximize2, RefreshCw, Ruler } from 'lucide-react';
 
-export default function FovSuiteView({ initialTab = 'fov', onSelectView }) {
+export default function FovSuiteView({ initialTab = 'fov' }) {
   const [activeTab, setActiveTab] = useState(initialTab); // 'fov', 'focal-match', 'subject-distance'
 
   useEffect(() => {
@@ -69,12 +69,7 @@ export default function FovSuiteView({ initialTab = 'fov', onSelectView }) {
       {/* Render selected tool */}
       {activeTab === 'fov' && <FovView isEmbedded />}
       {activeTab === 'focal-match' && <FocalLengthMatchView isEmbedded />}
-      {activeTab === 'subject-distance' && (
-        <SubjectDistanceView
-          onSelectView={onSelectView}
-          isEmbedded
-        />
-      )}
+      {activeTab === 'subject-distance' && <SubjectDistanceView onSelectView={() => setActiveTab('fov')} isEmbedded />}
     </div>
   );
 }

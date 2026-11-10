@@ -17,7 +17,6 @@ import { predictUpcomingTransits } from './services/transitChaser.js';
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [suiteSubTab, setSuiteSubTab] = useState(null);
-  const [dofParams, setDofParams] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAROpen, setIsAROpen] = useState(false);
 
@@ -57,15 +56,34 @@ export default function App() {
 
     setIsDetectingLocation(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        setLocation({
-          lat,
-          lng,
-          city: `GPS: ${lat.toFixed(2)}°, ${lng.toFixed(2)}°`
-        });
-        setIsDetectingLocation(false);
+
+        try {
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+          );
+
+          if (!response.ok) {
+            throw new Error(`Place lookup failed with status ${response.status}`);
+          }
+
+          const placeData = await response.json();
+          const place = placeData.city || placeData.locality || placeData.principalSubdivision || placeData.countryName;
+          const region = placeData.principalSubdivisionCode?.split('-').pop() || placeData.principalSubdivision;
+
+          setLocation({
+            lat,
+            lng,
+            city: place && region && place !== region ? `${place}, ${region}` : place || 'Current location'
+          });
+        } catch (error) {
+          console.warn('Place lookup error:', error);
+          setLocation({ lat, lng, city: 'Current location' });
+        } finally {
+          setIsDetectingLocation(false);
+        }
       },
       (err) => {
         console.warn('Geolocation error:', err);
@@ -76,11 +94,7 @@ export default function App() {
   };
 
   // Unified navigation handler supporting both suites and legacy/sub-tab IDs
-  const handleSelectView = (view, subTab = null, params = null) => {
-    if (params) {
-      setDofParams(params);
-    }
-
+  const handleSelectView = (view, subTab = null) => {
     if (view === 'ar-viewfinder') {
       setIsAROpen(true);
       return;
@@ -96,8 +110,6 @@ export default function App() {
         setActiveView('celestial');
         setSuiteSubTab('planner');
         break;
-      case 'transit-chaser':
-      case 'transits':
       case 'moon-transit':
         setActiveView('celestial');
         setSuiteSubTab('moon');
@@ -207,8 +219,6 @@ export default function App() {
         return (
           <DofSuiteView
             initialTab={suiteSubTab || 'calc'}
-            dofParams={dofParams}
-            onSelectView={handleSelectView}
           />
         );
 
@@ -216,7 +226,6 @@ export default function App() {
         return (
           <FovSuiteView
             initialTab={suiteSubTab || 'fov'}
-            onSelectView={handleSelectView}
           />
         );
 
@@ -288,8 +297,6 @@ export default function App() {
         onClose={() => setIsAROpen(false)}
         moonData={ephemData.moon}
         sunData={ephemData.sun}
-        userLocation={location}
-        initialDate={currentDate}
       />
     </div>
   );

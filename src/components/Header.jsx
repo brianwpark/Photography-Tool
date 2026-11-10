@@ -24,7 +24,7 @@ export default function Header({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-lg tracking-tight text-white">AstroPro</span>
+              <span className="font-bold text-lg tracking-tight text-white">Photo Tool</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-brand-cyan/15 text-brand-cyan font-semibold border border-brand-cyan/30">
                 FIELD
               </span>
@@ -41,11 +41,11 @@ export default function Header({
             onClick={onDetectLocation}
             disabled={isDetectingLocation}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-xs font-mono text-slate-300 hover:text-white transition-all active:scale-95"
-            title="Click to detect GPS location"
+            title="Click to detect your current place"
           >
             <MapPin size={14} className={isDetectingLocation ? 'text-brand-amber animate-spin' : 'text-brand-cyan'} />
-            <span className="hidden sm:inline">{location.city || `${location.lat.toFixed(2)}°, ${location.lng.toFixed(2)}°`}</span>
-            <span className="sm:hidden">{location.lat.toFixed(1)}°, {location.lng.toFixed(1)}°</span>
+            <span className="hidden sm:inline">{isDetectingLocation ? 'Finding place…' : location.city || 'Current location'}</span>
+            <span className="sm:hidden">{isDetectingLocation ? 'Finding…' : location.city || 'Current location'}</span>
           </button>
 
           {/* Quick AR Viewfinder Button */}
