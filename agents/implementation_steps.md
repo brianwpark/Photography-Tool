@@ -89,17 +89,123 @@
   - [x] Updated `ArViewfinderModal.jsx` with fallbacks, insecure context prompt with 1-click HTTPS redirect, iOS `DeviceOrientationEvent.requestPermission()`, `playsInline` video handling, and user gesture triggers.
   - [x] Synchronized changes to `D:\Github Repositories\Photography-Tool`.
 
-- [x] **Step 11: Initial Figma Make Import Setup**
-  - [x] Audited active environment-variable usage; no application secrets or required integration variables were found.
-  - [x] Added executable `.figma/make/install` and `.figma/make/dev` scripts using the repository's npm/Vite lifecycle.
-  - [x] Preserved local HTTPS while disabling the self-signed SSL plugin only in the Figma-supervised environment so HTTP health checks can succeed.
-  - [x] Added static `.figma/make/deploy`, `.figma/make/deploy-preview`, and `.figma/make/deploy.json` configuration targeting Vite's `dist` output.
-  - [x] Verified bootstrap, production deploy, and deploy-preview workflows successfully.
+- [x] **Step 11: PhotoPills-Style AR Viewfinder HUD with Celestial Paths & Time Scrubber**
+  - [x] Added `getDailyCelestialPath` function to `src/services/ephemeris.js` calculating 24h Sun/Moon trajectory curves and hourly milestones.
+  - [x] Rebuilt `src/components/ArViewfinderModal.jsx` matching reference photo (`media_1793857020449_8ec0848b.jpg`):
+    - Real-time horizon line (0.0° altitude) with frosted circular badges (`[W]`, `[247.5°]`, `[SW]`, `[E]`, `[N]`, etc.).
+    - Elevation lines in 10° steps ($-20^\circ$ to $+80^\circ$) with degree badges (`10.0°`, `20.0°`).
+    - Azimuthal meridian lines forming a spherical celestial dome.
+    - Golden Sun trajectory arc with hourly node markers and time text labels (`6:00 PM`, `7:00 PM`, `8:00 PM`).
+    - Cyan Moon trajectory arc with hourly node markers.
+    - Active glowing Sun disc with corona and active Moon disc at current selected time.
+    - Interactive 24-hour time scrubber slider with play/pause celestial motion animation.
+    - Date picker input and quick step buttons (`-1h`, `-10m`, `+10m`, `+1h`).
+    - Top bar with PhotoPills style: `Now` button, `Augmented Reality` title, `Done` button, and `M/D/YY, H:MM AM/PM` timestamp.
+    - "Visual calibration" drawer to adjust azimuth offset ($\pm 45^\circ$) and pitch offset ($\pm 30^\circ$).
+  - [x] Verified full build with `npm run build` (0 warnings, 0 errors).
+  - [x] Committed and pushed to GitHub `Deploy` branch (`8c00159`).
 
-- [x] **Step 12: Header Place Name**
-  - [x] Added reverse geocoding to convert detected GPS coordinates into a city/region label.
-  - [x] Updated only the selected header button UI to display the place name across desktop and mobile layouts.
-  - [x] Added loading and graceful place-lookup fallback labels without exposing coordinates.
+- [x] **Step 12: AR Video Stream Attachment, Landscape Backdrop & Fluid Motion Controls**
+  - [x] Fixed black background: Kept `<video>` permanently mounted in the DOM and attached `srcObject` via dedicated `useEffect([stream])`.
+  - [x] Replaced dark night void fallback with a realistic architectural sky/water landscape scene inspired by the reference photo.
+  - [x] Added iOS native compass heading (`e.webkitCompassHeading`) so real device sensors track accurately.
+  - [x] Increased touch swipe sensitivity from 0.15 to 0.42 deg/pixel with continuous delta tracking for effortless 360° pan and tilt.
+  - [x] Added quick-target radar buttons (`Find Sun`, `Find Moon`, `N`, `E`, `S`, `W`) for instant alignment.
+  - [x] Synced to `D:\Github Repositories\Photography-Tool` and pushed commit `52297df` to `Deploy`.
+
+- [x] **Step 13: "Apply to DoF Calculator" Navigation & Value Transfer**
+  - [x] Fixed navigation in `FovSuiteView.jsx`: Replaced hardcoded `setActiveTab('fov')` with delegated `onSelectView`.
+  - [x] Updated `SubjectDistanceView.jsx` to pass `{ distance, focalLength, sensorId }` to `onSelectView('dof', 'calc', ...)`.
+  - [x] Added `dofParams` state and parameter handling in `App.jsx`.
+  - [x] Updated `DofSuiteView.jsx` and `DofView.jsx` to receive and apply transferred distance, focal length, and sensor presets, with dynamic slider scaling and confirmation toast.
+  - [x] Synced to `D:\Github Repositories\Photography-Tool` and pushed commit `a5436c3` to `Deploy`.
+
+- [x] **Step 14: Header Button Removal in Subject Distance View**
+  - [x] Removed duplicate header button in `SubjectDistanceView.jsx`.
+  - [x] Retained the dedicated action button directly beneath the Required Shooting Distance result value.
+  - [x] Synced to `D:\Github Repositories\Photography-Tool` and pushed commit `09e3948` to `Deploy`.
+
+- [x] **Step 15: Transit Chaser Comprehensive Feature Integration (`transit_chaser_feature_analysis.md`)**
+  - [x] Added `playRadarPing()` and `playTransitAlarm()` audio synthesis methods to `SoundSynthesizer` in `src/services/sound.js`.
+  - [x] Upgraded `src/services/transitChaser.js` with:
+    - True 3D Airspace vector geometry (altitude, ground speed, vertical climb, slant range, angular size).
+    - Ingress, Centerline, and Egress precise timing calculations.
+    - Fleets: Boeing, Airbus, Fun Planes (special liveries), ISS, Tiangong, and Rocket launches.
+    - Contrail risk and recommended shutter speeds.
+    - 5 spatial distance bands ($0\text{ km}, 1\text{ km}, 2\text{ km}, 5\text{ km}, 10\text{ km}$) for location scouting.
+  - [x] Upgraded `src/views/MoonTransitView.jsx` with:
+    - Dual modes: Easy Mode (1-tap setup) vs Manual Mode (custom radii, prediction windows, angular tolerances, 3D Boosted mode, Takeoff correction).
+    - Target Body switcher: Sun & Moon, Moon Only, Sun Only.
+    - Plane Watch fleet filter and ⭐ Fun Planes highlights.
+    - Live Radar Sound Test button.
+    - Spatial Corridor & Distance Bands Planner with 3D celestial disc silhouette simulator.
+    - Equipment Setup & Solar Safety Guide (Solar ND 5.0 warnings, 1/4000s shutter speeds).
+  - [x] Synced to `D:\Github Repositories\Photography-Tool` and pushed commit `843c638` to `Deploy`.
 
 
 
+
+
+
+
+
+
+
+
+### Step 16: Augmented Reality Visual Alignment with PhotoPills Reference
+- **Status**: Completed
+- **Changes**:
+  - Upgraded `src/components/ArViewfinderModal.jsx` with true 3D spherical pinhole camera projection matrix (yaw, pitch, roll).
+  - Elevation parallels ($10^\circ$ increments) render as naturally curved arcs matching optical wide-angle camera perspectives.
+  - Implemented PhotoPills-style frosted circular badges: cardinal `W` on the horizon in bold dark font, exact azimuth `267.5°`, and elevation `10.0°`.
+  - Replaced straight lines with realistic continuous Sun trajectory gradient transitioning from bright gold to sunset orange at the horizon.
+  - Positioned glowing Sun disc directly at the current time node (`6:51 PM`).
+  - Added Madrid Temple of Debod architectural silhouette and calm reflecting pool as the photorealistic backdrop when camera is off or simulated mode is on.
+  - Styled header with `Now` (cyan), `Augmented Reality` (bold white), and `Done` (cyan).
+  - Styled footer toolbar with `Visual calibration` (compass reticle) and `Action` (share icon) with textured PhotoPills background.
+  - Production build passing cleanly (2083 modules).
+  - Synced to `D:\Github Repositories\Photography-Tool` and pushed to `origin/Deploy`.
+
+### Step 17: Comprehensive Transit Chaser Feature Suite & Rebranding
+- **Status**: Completed
+- **Changes**:
+  - Renamed feature throughout the app to **Transit Chaser** (`src/views/CelestialSuiteView.jsx`, `src/App.jsx`, `src/views/DashboardView.jsx`).
+  - Added dedicated Transit Modes in `src/services/transitChaser.js`:
+    - `sun`: Solar disc crossing
+    - `moon`: Lunar disc crossing
+    - `combined`: Both Sun & Moon
+    - `contrail`: Aircraft condensation trails crossing the Sun or Moon disk
+    - `plane_on_plane`: Dual aircraft optical intersection crossing in the sky
+  - Upgraded `src/views/MoonTransitView.jsx` (aliased as `TransitChaserView`):
+    - Sub-tabs: `Live Radar & Transits`, `Scouting Corridor & Distance Bands`, `Contrails & Plane-on-Plane`, `How to Use Guide`, `Solar Filter & Camera Safety`, `Data Feeds & Diagnostics`.
+    - Easy Mode (1-tap setup) vs Manual Mode (10–100 km radius, 30–900s prediction window, 0.1°–4.0° detection margin, FL100–FL450 altitude filter).
+    - Added Algorithmic Engine controls: 3D Boosted Mode, Hyper Boost (EGM96 + refraction), Takeoff Climb Correction, and SunCalc 2.0.1/1.x engine selection.
+    - Integrated the complete official `how_to_use.html` guide with step-by-step setup, parameter tips, and solar safety warnings.
+    - Added Data Feeds tab supporting ADS-B Community (`adsb.fi`), Flightradar24 API token, local Dump1090 URL, and automated email alert dispatch arming.
+    - Callsign and flight number search input.
+  - Production build passing cleanly (2083 modules).
+  - Pushed to `origin/Deploy`.
+
+### Step 18: Master Design & Functionality Specification Export
+- **Status**: Completed
+- **Changes**:
+  - Authored standalone, self-contained `SYSTEM_DESIGN_AND_FUNCTIONALITY.md` in root workspace and Antigravity artifact directory.
+  - Complete coverage of:
+    - Tactical dark obsidian design system tokens and responsive rules.
+    - Full functional suite breakdown (Field Hub, Planner, Transit Chaser, DoF, FoV, Exposure & ND Timers, Astrophotography, AR Viewfinder).
+    - Mathematical models, optical equations, and ephemeris algorithms.
+    - Web Audio API procedural synthesizer architecture.
+    - Codebase directory hierarchy and integration rules for future AI agents.
+  - Synced to `D:\Github Repositories\Photography-Tool` and pushed to `Deploy`.
+
+### Step 19: Subject Distance Suite — Optimal, Minimal & Maximum Focal Length Calculator
+- **Status**: Completed
+- **Changes**:
+  - Implemented optical thin-lens inversion algorithm in `src/services/fovCalc.js` (`calculateFocalLengthFromDistance`):
+    $$f_{\text{optimal}} = \frac{d_{\text{mm}} \cdot (H_{\text{sensor}} \cdot C_v)}{H_{\text{subj\_mm}} + (H_{\text{sensor}} \cdot C_v)}$$
+    $$f_{\text{max}} = \frac{d_{\text{mm}} \cdot (H_{\text{sensor}} \cdot C_{v,\text{max}})}{H_{\text{subj\_mm}} + (H_{\text{sensor}} \cdot C_{v,\text{max}})}$$
+    $$f_{\text{min}} = \frac{d_{\text{mm}} \cdot (H_{\text{sensor}} \cdot C_{v,\text{min}})}{H_{\text{subj\_mm}} + (H_{\text{sensor}} \cdot C_{v,\text{min}})}$$
+  - Integrated sensor resolution ($W_{\text{px}} \times H_{\text{px}}$) and pixel pitch ($p$ in $\mu\text{m}$) based on camera sensor megapixels.
+  - Upgraded `src/views/SubjectDistanceView.jsx` with a responsive mode switcher, 5 granular parameter sliders with quick presets, 3 hero result cards, multi-lens visual composition frame, and direct DoF transfer button.
+  - Production build passing cleanly (2083 modules).
+  - Pushed to `origin/Deploy`.

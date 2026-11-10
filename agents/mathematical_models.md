@@ -131,3 +131,35 @@ The aperture $f$-number $N$ follows the power series $N = (\sqrt{2})^{n/3} = 2^{
 All optical calculators and dropdown selectors step through these exact 1/3-stop values.
 
 
+
+
+---
+
+## 10. Subject Distance: Focal Length from Distance, Subject Height & Megapixels
+
+Given:
+- Subject distance: $d$ (meters)
+- Subject height: $H_{\text{subj}}$ (meters)
+- Vertical frame coverage fraction: $C_v$ (e.g. $0.75$ for $75\%$)
+- Camera sensor height: $H_{\text{sensor}}$ (mm)
+- Sensor megapixels: $MP$ (e.g. $24, 45, 61\text{ MP}$)
+
+### 1. Optimal Focal Length ($f_{\text{optimal}}$)
+$$h_{\text{image}} = H_{\text{sensor}} \times C_v$$
+$$f_{\text{optimal}} = \frac{d_{\text{mm}} \cdot h_{\text{image}}}{H_{\text{subj\_mm}} + h_{\text{image}}}$$
+
+### 2. Maximum Focal Length ($f_{\text{max}}$)
+Before the subject clips the top/bottom edges of the frame ($C_{v,\text{max}} = 95\% - 96\%$):
+$$h_{\text{image,max}} = H_{\text{sensor}} \times C_{v,\text{max}}$$
+$$f_{\text{max}} = \frac{d_{\text{mm}} \cdot h_{\text{image,max}}}{H_{\text{subj\_mm}} + h_{\text{image,max}}}$$
+
+### 3. Minimal Focal Length ($f_{\text{min}}$)
+Widest framing allowing environmental breathing room while maintaining sensor resolving pixel density:
+$$C_{v,\text{min}} = \max\left(0.18, \min\left(C_v \times 0.70, \frac{1600}{H_{\text{pixels}}}\right)\right)$$
+$$h_{\text{image,min}} = H_{\text{sensor}} \times C_{v,\text{min}}$$
+$$f_{\text{min}} = \frac{d_{\text{mm}} \cdot h_{\text{image,min}}}{H_{\text{subj\_mm}} + h_{\text{image,min}}}$$
+
+### 4. Sensor Resolution & Pixels on Subject
+$$\text{Sensor Vertical Pixels } H_{\text{pixels}} = \sqrt{\frac{MP \times 10^6}{W_{\text{sensor}} / H_{\text{sensor}}}}$$
+$$\text{Pixel Pitch } p = \frac{H_{\text{sensor}} \times 1000}{H_{\text{pixels}}} \quad (\mu\text{m})$$
+$$\text{Subject Vertical Pixels} = H_{\text{pixels}} \times C_v$$
