@@ -126,22 +126,46 @@ export default function SubjectDistanceView({ onSelectView }) {
             {/* 1. Subject Distance */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
+                <label htmlFor="subject-distance-num" className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
                   <span>1. Subject Distance:</span>
-                </span>
-                <span className="text-base font-mono font-bold text-brand-cyan">
-                  {subjectDistanceMeters} m <span className="text-xs text-slate-500 font-normal">({(subjectDistanceMeters * 3.28084).toFixed(1)} ft)</span>
+                </label>
+                <span className="text-xs font-mono text-slate-400">
+                  ≈ {(subjectDistanceMeters * 3.28084).toFixed(1)} ft
                 </span>
               </div>
+
+              {/* Number Input Box with Unit Badge */}
+              <div className="relative flex items-center mb-2">
+                <input
+                  id="subject-distance-num"
+                  type="number"
+                  min="0.1"
+                  max="10000"
+                  step="0.1"
+                  value={subjectDistanceMeters === 0 ? '' : subjectDistanceMeters}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value);
+                    setSubjectDistanceMeters(isNaN(val) ? 0 : Math.max(0.1, val));
+                  }}
+                  className="w-full bg-slate-900 text-brand-cyan font-mono text-lg font-bold px-3.5 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-brand-cyan focus:ring-1 focus:ring-brand-cyan transition-all"
+                  placeholder="Enter distance in meters..."
+                />
+                <span className="absolute right-3.5 text-xs font-mono font-bold text-slate-400 pointer-events-none uppercase">
+                  meters
+                </span>
+              </div>
+
+              {/* Range Slider for fast adjustment */}
               <input
                 type="range"
                 min="0.5"
-                max="50"
+                max={Math.max(50, Math.ceil(subjectDistanceMeters * 1.2))}
                 step="0.5"
                 value={subjectDistanceMeters}
                 onChange={e => setSubjectDistanceMeters(Number(e.target.value))}
                 className="w-full accent-brand-cyan cursor-pointer"
               />
+
               {/* Presets */}
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {[
@@ -149,7 +173,8 @@ export default function SubjectDistanceView({ onSelectView }) {
                   { label: 'Studio (5m)', val: 5.0 },
                   { label: 'Event (10m)', val: 10.0 },
                   { label: 'Sports (25m)', val: 25.0 },
-                  { label: 'Wildlife (50m)', val: 50.0 }
+                  { label: 'Wildlife (50m)', val: 50.0 },
+                  { label: 'Distant (100m)', val: 100.0 }
                 ].map(item => (
                   <button
                     key={item.label}
@@ -170,13 +195,35 @@ export default function SubjectDistanceView({ onSelectView }) {
             {/* 2. Subject Height */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                <label htmlFor="subject-height-num" className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
                   2. Real Subject Height:
-                </span>
-                <span className="text-base font-mono font-bold text-brand-amber">
-                  {objectDimensionMeters} m <span className="text-xs text-slate-500 font-normal">({(objectDimensionMeters * 100).toFixed(0)} cm)</span>
+                </label>
+                <span className="text-xs font-mono text-slate-400">
+                  ≈ {(objectDimensionMeters * 100).toFixed(0)} cm
                 </span>
               </div>
+
+              {/* Number Input Box with Unit Badge */}
+              <div className="relative flex items-center mb-2">
+                <input
+                  id="subject-height-num"
+                  type="number"
+                  min="0.05"
+                  max="1000"
+                  step="0.05"
+                  value={objectDimensionMeters === 0 ? '' : objectDimensionMeters}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value);
+                    setObjectDimensionMeters(isNaN(val) ? 0 : Math.max(0.05, val));
+                  }}
+                  className="w-full bg-slate-900 text-brand-amber font-mono text-lg font-bold px-3.5 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-brand-amber focus:ring-1 focus:ring-brand-amber transition-all"
+                  placeholder="Enter height in meters..."
+                />
+                <span className="absolute right-3.5 text-xs font-mono font-bold text-slate-400 pointer-events-none uppercase">
+                  meters
+                </span>
+              </div>
+
               <input
                 type="range"
                 min="0.2"

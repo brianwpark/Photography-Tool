@@ -209,3 +209,11 @@
   - Upgraded `src/views/SubjectDistanceView.jsx` with a responsive mode switcher, 5 granular parameter sliders with quick presets, 3 hero result cards, multi-lens visual composition frame, and direct DoF transfer button.
   - Production build passing cleanly (2083 modules).
   - Pushed to `origin/Deploy`.
+
+### Step 20: Direct Numeric Inputs for Subject Distance & Height
+- **Status**: Completed
+- **Changes**:
+  - Implemented `<input type="number" ... />` for Subject Distance in `src/views/SubjectDistanceView.jsx` allowing direct manual keyboard entry of exact distances (e.g. 7.5m, 12m, 250m) alongside the visual slider.
+  - Added real-time imperial conversion display ($ft$) and unit badge.
+  - Implemented direct numeric entry for Subject Height ($m$ and $cm$).
+  - Synced to `D:\Github Repositories\Photography-Tool` and pushed to `Deploy`.

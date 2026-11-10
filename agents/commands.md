@@ -258,3 +258,14 @@
     - **Find Shooting Distance Mode**: Classic triangulation from focal length.
   - Verified production build (2083 modules).
   - Pushed to `origin/Deploy`.
+
+
+## [Command Turn 15] - Subject Distance & Height Direct Number Inputs
+- **User Input**:
+  - "for the feature you just edited, I would like the subject distance to be an number input"
+- **Execution**:
+  - Upgraded Subject Distance in `SubjectDistanceView.jsx` from a slider-only input to a dedicated tactical numeric input field (`<input type="number" step="any" min="0.1" max="10000" ... />`) with an integrated unit badge (`meters`) and imperial foot conversion readout (`≈ X.X ft`).
+  - Added an interactive range slider below the number input for rapid dragging and synced preset buttons.
+  - Upgraded Subject Height to include an interactive numeric input field as well.
+  - Verified production build (2083 modules).
+  - Pushed to `origin/Deploy`.
